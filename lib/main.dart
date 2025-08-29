@@ -14,23 +14,20 @@ class MedicalPaymentApp extends StatelessWidget {
     return MaterialApp(
       title: 'Gestion des Encaissements Dentaires',
       debugShowCheckedModeBanner: false,
-      
+
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('fr', 'FR'),
-        Locale('en', 'US'),
-      ],
+      supportedLocales: const [Locale('fr', 'FR'), Locale('en', 'US')],
       locale: const Locale('fr', 'FR'),
-      
+
       theme: ThemeData(
         primarySwatch: Colors.blue,
         primaryColor: const Color(0xFF4F46E5),
         scaffoldBackgroundColor: const Color(0xFFF1F5F9),
-        
+
         // AppBar Theme
         appBarTheme: const AppBarTheme(
           elevation: 0,
@@ -42,7 +39,7 @@ class MedicalPaymentApp extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        
+
         // Elevated Button Theme
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -57,7 +54,7 @@ class MedicalPaymentApp extends StatelessWidget {
             ),
           ),
         ),
-        
+
         // Input Decoration Theme
         inputDecorationTheme: InputDecorationTheme(
           border: OutlineInputBorder(
@@ -77,7 +74,7 @@ class MedicalPaymentApp extends StatelessWidget {
           contentPadding: const EdgeInsets.all(12),
           hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
         ),
-        
+
         // Card Theme
         cardTheme: CardTheme(
           elevation: 1,
@@ -87,7 +84,7 @@ class MedicalPaymentApp extends StatelessWidget {
           color: Colors.white,
           margin: const EdgeInsets.all(4),
         ),
-        
+
         // Text Theme - Smaller fonts
         textTheme: const TextTheme(
           headlineLarge: TextStyle(
@@ -115,21 +112,15 @@ class MedicalPaymentApp extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
-          bodyLarge: TextStyle(
-            color: Color(0xFF475569),
-            fontSize: 14,
-          ),
-          bodyMedium: TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 12,
-          ),
+          bodyLarge: TextStyle(color: Color(0xFF475569), fontSize: 14),
+          bodyMedium: TextStyle(color: Color(0xFF64748B), fontSize: 12),
           labelMedium: TextStyle(
             color: Color(0xFF64748B),
             fontSize: 11,
             fontWeight: FontWeight.w500,
           ),
         ),
-        
+
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF4F46E5),
           primary: const Color(0xFF4F46E5),
@@ -139,16 +130,21 @@ class MedicalPaymentApp extends StatelessWidget {
           error: const Color(0xFFEF4444),
         ),
       ),
-      
+
       home: const HomeScreen(),
-      
+
       routes: {
         '/home': (context) => const HomeScreen(),
         '/patient-selection': (context) => const PatientSelectionScreen(),
         '/payment-success': (context) => const PaymentSuccessScreen(),
         '/new-payment': (context) => const NewPaymentScreen(),
         '/daily-receipts': (context) => const DailyReceiptsScreen(),
-        '/create-user': (context) => const CreateUserScreen(), // New route added
+        '/create-user': (context) => const CreateUserScreen(),
+        '/patient-details': (context) => const PatientDetailsScreen(),
+        '/create-treatment': (context) => const CreateTreatmentScreen(),
+        '/treatment-payment-selection':
+            (context) => const TreatmentPaymentSelectionScreen(),
+        '/treatment-payment': (context) => const TreatmentPaymentScreen(),
       },
     );
   }
