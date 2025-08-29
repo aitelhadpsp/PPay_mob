@@ -132,6 +132,8 @@ class CustomCard extends StatelessWidget {
 // These maintain your original SignatureBox import and have smaller, cleaner design
 
 // Patient Selection Screen - Compact design
+// Updated PatientSelectionScreen class - replace the existing one in your screens/main.dart
+
 class PatientSelectionScreen extends StatefulWidget {
   const PatientSelectionScreen({Key? key}) : super(key: key);
 
@@ -143,7 +145,7 @@ class _PatientSelectionScreenState extends State<PatientSelectionScreen> {
   String searchQuery = '';
   Patient? selectedPatient;
 
-  final List<Patient> mockPatients = [
+  List<Patient> mockPatients = [
     Patient(name: "Abdelhak Ait elhad", reference: "9090"),
     Patient(name: "Sarah El Mansouri", reference: "8821"),
     Patient(name: "Mohamed Benali", reference: "7755"),
@@ -165,26 +167,67 @@ class _PatientSelectionScreenState extends State<PatientSelectionScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: const Text('Nouveau Encaissement'),
+        title: const Text('Sélectionner Patient'),
         backgroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          // Quick create button in app bar
+          IconButton(
+            icon: const Icon(Icons.person_add_outlined),
+            onPressed: _navigateToCreateUser,
+            tooltip: 'Créer nouveau patient',
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // Search Header
+          // Search and Create Section
           Container(
             color: Colors.white,
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Sélectionner un Patient',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1E293B),
-                  ),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Choisissez un patient',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                    ),
+                    // Create Patient Button
+                    TextButton.icon(
+                      onPressed: _navigateToCreateUser,
+                      icon: const Icon(
+                        Icons.add,
+                        size: 18,
+                        color: Color(0xFF8B5CF6),
+                      ),
+                      label: const Text(
+                        'Nouveau',
+                        style: TextStyle(
+                          color: Color(0xFF8B5CF6),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B5CF6).withOpacity(0.1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -202,109 +245,291 @@ class _PatientSelectionScreenState extends State<PatientSelectionScreen> {
           
           // Patient List
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: filteredPatients.length,
-              itemBuilder: (context, index) {
-                final patient = filteredPatients[index];
-                final isSelected = selectedPatient?.reference == patient.reference;
-                
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFFE2E8F0),
-                      width: isSelected ? 1.5 : 1,
-                    ),
-                  ),
-                  child: ListTile(
-                    onTap: () => setState(() => selectedPatient = patient),
-                    leading: CircleAvatar(
-                      radius: 20,
-                      backgroundColor: isSelected 
-                          ? const Color(0xFF4F46E5)
-                          : const Color(0xFFF1F5F9),
-                      child: Text(
-                        patient.name[0].toUpperCase(),
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : const Color(0xFF64748B),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
+            child: filteredPatients.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filteredPatients.length,
+                    itemBuilder: (context, index) {
+                      final patient = filteredPatients[index];
+                      final isSelected = selectedPatient?.reference == patient.reference;
+                      
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFFE2E8F0),
+                            width: isSelected ? 2 : 1,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(0xFF4F46E5).withOpacity(0.1),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : [],
                         ),
-                      ),
-                    ),
-                    title: Text(
-                      patient.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF1E293B),
-                        fontSize: 14,
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Ref: ${patient.reference}',
-                      style: const TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 12,
-                      ),
-                    ),
-                    trailing: isSelected
-                        ? const Icon(
-                            Icons.check_circle,
-                            color: Color(0xFF4F46E5),
-                            size: 20,
-                          )
-                        : null,
+                        child: ListTile(
+                          onTap: () => setState(() => selectedPatient = patient),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          leading: CircleAvatar(
+                            radius: 24,
+                            backgroundColor: isSelected 
+                                ? const Color(0xFF4F46E5)
+                                : const Color(0xFFF1F5F9),
+                            child: Text(
+                              patient.name[0].toUpperCase(),
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : const Color(0xFF64748B),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            patient.name,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF1E293B),
+                              fontSize: 15,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.badge_outlined,
+                                    size: 14,
+                                    color: Colors.grey[500],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Ref: ${patient.reference}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF64748B),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          trailing: isSelected
+                              ? Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF4F46E5),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.arrow_forward_ios,
+                                  color: Colors.grey[400],
+                                  size: 16,
+                                ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
           
           // Continue Button
           Container(
             color: Colors.white,
             padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: selectedPatient != null
-                    ? () {
-                        Navigator.pushNamed(
-                          context,
-                          '/new-payment',
-                          arguments: selectedPatient,
-                        );
-                      }
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4F46E5),
-                  disabledBackgroundColor: const Color(0xFFE2E8F0),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+            child: Column(
+              children: [
+                // Quick stats
+                if (filteredPatients.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.people_outline,
+                          size: 16,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${filteredPatients.length} patient${filteredPatients.length > 1 ? 's' : ''} trouvé${filteredPatients.length > 1 ? 's' : ''}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: selectedPatient != null
+                        ? () {
+                            Navigator.pushNamed(
+                              context,
+                              '/new-payment',
+                              arguments: selectedPatient,
+                            );
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F46E5),
+                      disabledBackgroundColor: const Color(0xFFE2E8F0),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (selectedPatient != null) ...[
+                          const Icon(Icons.arrow_forward, size: 18),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          selectedPatient != null
+                              ? 'Continuer avec ${selectedPatient!.name.split(' ')[0]}'
+                              : 'Sélectionner un patient',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                child: Text(
-                  selectedPatient != null
-                      ? 'Continuer'
-                      : 'Sélectionner un patient',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-}
 
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.person_search,
+                size: 40,
+                color: Color(0xFF8B5CF6),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Aucun patient trouvé',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              searchQuery.isNotEmpty
+                  ? 'Aucun résultat pour "$searchQuery"'
+                  : 'Commencez par créer votre premier patient',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _navigateToCreateUser,
+              icon: const Icon(Icons.person_add, size: 20),
+              label: const Text('Créer un nouveau patient'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8B5CF6),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(25),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToCreateUser() async {
+    final result = await Navigator.pushNamed(context, '/create-user');
+    
+    // If a new patient was created, add it to the list and select it
+    if (result != null && result is Patient) {
+      setState(() {
+        mockPatients.insert(0, result); // Add to beginning of list
+        selectedPatient = result; // Auto-select the new patient
+        searchQuery = ''; // Clear search
+      });
+      
+      // Show confirmation
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('${result.name} ajouté et sélectionné!'),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          action: SnackBarAction(
+            label: 'Continuer',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                '/new-payment',
+                arguments: result,
+              );
+            },
+          ),
+        ),
+      );
+    }
+  }
+}
 // New Payment Screen - Keep original SignatureBox
 // Replace your NewPaymentScreen class in screens/main.dart with this updated version
 // This works with your existing SignatureBox widget
@@ -1184,6 +1409,8 @@ class DailyReceiptsScreen extends StatelessWidget {
   }
 }
 
+// Updated HomeScreen class - replace the existing one in your screens/main.dart
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
@@ -1212,7 +1439,7 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: const Text('Mes Projets'), // Changed to match image style
+        title: const Text('Mes Projets'),
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -1235,7 +1462,7 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Stats Row - More compact like in image
+            // Top Stats Row
             Row(
               children: [
                 Expanded(
@@ -1243,7 +1470,7 @@ class HomeScreen extends StatelessWidget {
                     'Recette Jour',
                     '${totalToday.toInt()} DH',
                     const Color(0xFF10B981),
-                    '86% Done', // Progress like in image
+                    '86% Done',
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1260,7 +1487,7 @@ class HomeScreen extends StatelessWidget {
             
             const SizedBox(height: 20),
             
-            // Progress Section - Like in the image
+            // Progress Section
             const Text(
               'Mes Progrès',
               style: TextStyle(
@@ -1275,11 +1502,11 @@ class HomeScreen extends StatelessWidget {
             
             const SizedBox(height: 20),
             
-            // Quick Actions - More compact
+            // Quick Actions - Updated with Create Patient
             Row(
               children: [
                 const Text(
-                  'Actions',
+                  'Actions Rapides',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -1295,20 +1522,30 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             
+            // Updated Actions Grid - 3 buttons
             Row(
               children: [
                 Expanded(
                   child: _buildActionButton(
-                    'Nouveau Encaissement',
+                    'Nouveau\nEncaissement',
                     Icons.add_circle_outline,
                     const Color(0xFF4F46E5),
                     () => Navigator.pushNamed(context, '/patient-selection'),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(
                   child: _buildActionButton(
-                    'Recettes du Jour',
+                    'Créer\nPatient',
+                    Icons.person_add_outlined,
+                    const Color(0xFF8B5CF6),
+                    () => Navigator.pushNamed(context, '/create-user'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionButton(
+                    'Recettes\nJour',
                     Icons.bar_chart,
                     const Color(0xFF10B981),
                     () => Navigator.pushNamed(context, '/daily-receipts'),
@@ -1319,12 +1556,12 @@ class HomeScreen extends StatelessWidget {
             
             const SizedBox(height: 20),
             
-            // Team Members section (adapted from image)
+            // Team Members section
             _buildTeamSection(todayPayments),
             
             const SizedBox(height: 20),
             
-            // Bottom Navigation-like buttons (like in image)
+            // Bottom Navigation
             _buildBottomNavigation(context),
           ],
         ),
@@ -1441,7 +1678,7 @@ class HomeScreen extends StatelessWidget {
               ),
               const Spacer(),
               const Text(
-                '${17}',  // Like in the image
+                '17',
                 style: TextStyle(
                   fontSize: 12,
                   color: Color(0xFF64748B),
@@ -1464,7 +1701,7 @@ class HomeScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
         ),
-        child: Row(
+        child: Column(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
@@ -1474,15 +1711,14 @@ class HomeScreen extends StatelessWidget {
               ),
               child: Icon(icon, color: color, size: 16),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF475569),
-                ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF475569),
               ),
             ),
           ],
@@ -1588,7 +1824,8 @@ class HomeScreen extends StatelessWidget {
           _buildNavItem(Icons.home, 'Accueil', true, () {}),
           _buildNavItem(Icons.task_outlined, 'Tâches', false, 
               () => Navigator.pushNamed(context, '/daily-receipts')),
-          _buildNavItem(Icons.chat_bubble_outline, 'Chat', false, () {}),
+          _buildNavItem(Icons.person_add_outlined, 'Patients', false,
+              () => Navigator.pushNamed(context, '/create-user')),
           _buildNavItem(Icons.calendar_today_outlined, 'Calendrier', false, () {}),
         ],
       ),
@@ -1626,13 +1863,519 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+}// Add this CreateUserScreen class to your screens/main.dart file
+
+class CreateUserScreen extends StatefulWidget {
+  const CreateUserScreen({Key? key}) : super(key: key);
+
+  @override
+  State<CreateUserScreen> createState() => _CreateUserScreenState();
+}
+
+class _CreateUserScreenState extends State<CreateUserScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _notesController = TextEditingController();
+  
+  String? _selectedGender;
+  DateTime? _selectedBirthDate;
+  bool _isLoading = false;
+
+  final List<String> _genderOptions = ['Homme', 'Femme'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF1F5F9),
+      appBar: AppBar(
+        title: const Text('Nouveau Patient'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          TextButton(
+            onPressed: _isFormValid() ? _savePatient : null,
+            child: Text(
+              'Enregistrer',
+              style: TextStyle(
+                color: _isFormValid() 
+                    ? const Color(0xFF4F46E5) 
+                    : const Color(0xFF94A3B8),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Progress indicator
+                    _buildProgressIndicator(),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Profile Section
+                    _buildSectionCard(
+                      title: 'Informations Personnelles',
+                      icon: Icons.person_outline,
+                      children: [
+                        _buildTextField(
+                          controller: _nameController,
+                          label: 'Nom complet',
+                          hint: 'Ex: Ahmed Ben Ali',
+                          icon: Icons.person_outline,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Le nom est obligatoire';
+                            }
+                            if (value.trim().length < 2) {
+                              return 'Le nom doit contenir au moins 2 caractères';
+                            }
+                            return null;
+                          },
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Gender Selection
+                        const Text(
+                          'Genre',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF374151),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: _genderOptions.map((gender) {
+                            final isSelected = _selectedGender == gender;
+                            return Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _selectedGender = gender),
+                                child: Container(
+                                  margin: EdgeInsets.only(
+                                    right: gender == _genderOptions.first ? 8 : 0,
+                                    left: gender == _genderOptions.last ? 8 : 0,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected 
+                                        ? const Color(0xFF4F46E5).withOpacity(0.1)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: isSelected 
+                                          ? const Color(0xFF4F46E5)
+                                          : const Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        gender == 'Homme' ? Icons.male : Icons.female,
+                                        color: isSelected 
+                                            ? const Color(0xFF4F46E5)
+                                            : const Color(0xFF64748B),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        gender,
+                                        style: TextStyle(
+                                          color: isSelected 
+                                              ? const Color(0xFF4F46E5)
+                                              : const Color(0xFF64748B),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Birth Date
+                        GestureDetector(
+                          onTap: _selectBirthDate,
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.calendar_today_outlined,
+                                  color: Color(0xFF64748B),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  _selectedBirthDate != null
+                                      ? 'Date de naissance: ${_formatDate(_selectedBirthDate!)}'
+                                      : 'Sélectionner la date de naissance',
+                                  style: TextStyle(
+                                    color: _selectedBirthDate != null
+                                        ? const Color(0xFF1E293B)
+                                        : const Color(0xFF94A3B8),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Icon(
+                                  Icons.arrow_forward_ios,
+                                  color: Colors.grey[400],
+                                  size: 16,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Contact Section
+                    _buildSectionCard(
+                      title: 'Informations de Contact',
+                      icon: Icons.contact_phone_outlined,
+                      children: [
+                        _buildTextField(
+                          controller: _phoneController,
+                          label: 'Téléphone',
+                          hint: '+212 6 00 00 00 00',
+                          icon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Le téléphone est obligatoire';
+                            }
+                            return null;
+                          },
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        _buildTextField(
+                          controller: _emailController,
+                          label: 'Email (optionnel)',
+                          hint: 'patient@email.com',
+                          icon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        _buildTextField(
+                          controller: _addressController,
+                          label: 'Adresse (optionnelle)',
+                          hint: 'Rue, Ville, Code postal',
+                          icon: Icons.location_on_outlined,
+                          maxLines: 2,
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Notes Section
+                    _buildSectionCard(
+                      title: 'Notes Médicales',
+                      icon: Icons.note_outlined,
+                      children: [
+                        _buildTextField(
+                          controller: _notesController,
+                          label: 'Notes (optionnelles)',
+                          hint: 'Allergies, conditions médicales, remarques...',
+                          icon: Icons.note_outlined,
+                          maxLines: 3,
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 100), // Space for floating button
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      
+      // Floating Action Button
+      floatingActionButton: _isFormValid()
+          ? FloatingActionButton.extended(
+              onPressed: _isLoading ? null : _savePatient,
+              backgroundColor: const Color(0xFF4F46E5),
+              icon: _isLoading 
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: Text(_isLoading ? 'Enregistrement...' : 'Enregistrer'),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildProgressIndicator() {
+    final completedFields = _getCompletedFieldsCount();
+    final totalFields = 3; // Required fields: name, phone, gender
+    final progress = completedFields / totalFields;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Progression',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              Text(
+                '$completedFields/$totalFields',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: const Color(0xFFE2E8F0),
+            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4F46E5)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                color: const Color(0xFF4F46E5),
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF374151),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          validator: validator,
+          onChanged: (value) => setState(() {}), // Update progress
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 20),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 1.5),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.all(16),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _selectBirthDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().subtract(const Duration(days: 365 * 25)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF4F46E5),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null) {
+      setState(() {
+        _selectedBirthDate = picked;
+      });
+    }
+  }
+
+  bool _isFormValid() {
+    return _nameController.text.trim().isNotEmpty &&
+           _phoneController.text.trim().isNotEmpty &&
+           _selectedGender != null;
+  }
+
+  int _getCompletedFieldsCount() {
+    int count = 0;
+    if (_nameController.text.trim().isNotEmpty) count++;
+    if (_phoneController.text.trim().isNotEmpty) count++;
+    if (_selectedGender != null) count++;
+    return count;
+  }
+
+  Future<void> _savePatient() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Simulate API call
+    await Future.delayed(const Duration(seconds: 2));
+    
+    // Generate reference number
+    final reference = DateTime.now().millisecondsSinceEpoch.toString().substring(7);
+    
+    // Create new patient
+    final newPatient = Patient(
+      name: _nameController.text.trim(),
+      reference: reference,
+    );
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Text('Patient ${newPatient.name} créé avec succès!'),
+          ],
+        ),
+        backgroundColor: const Color(0xFF10B981),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+
+    // Navigate back with result
+    Navigator.pop(context, newPatient);
+  }
 
   String _formatDate(DateTime date) {
-    final months = [
-      'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin',
-      'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'
-    ];
-    
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _addressController.dispose();
+    _notesController.dispose();
+    super.dispose();
   }
 }

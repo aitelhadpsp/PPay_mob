@@ -28,17 +28,17 @@ class MedicalPaymentApp extends StatelessWidget {
       
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        primaryColor: const Color(0xFF4F46E5), // More vibrant blue like in image
-        scaffoldBackgroundColor: const Color(0xFFF1F5F9), // Slightly darker background
+        primaryColor: const Color(0xFF4F46E5),
+        scaffoldBackgroundColor: const Color(0xFFF1F5F9),
         
-        // AppBar Theme - cleaner like in image
+        // AppBar Theme
         appBarTheme: const AppBarTheme(
           elevation: 0,
           backgroundColor: Colors.white,
           foregroundColor: Color(0xFF1E293B),
           titleTextStyle: TextStyle(
             color: Color(0xFF1E293B),
-            fontSize: 20, // Smaller title
+            fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -47,12 +47,12 @@ class MedicalPaymentApp extends StatelessWidget {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             elevation: 0,
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20), // Less padding
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10), // Slightly less rounded
+              borderRadius: BorderRadius.circular(10),
             ),
             textStyle: const TextStyle(
-              fontSize: 14, // Smaller button text
+              fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -61,7 +61,7 @@ class MedicalPaymentApp extends StatelessWidget {
         // Input Decoration Theme
         inputDecorationTheme: InputDecorationTheme(
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8), // Less rounded
+            borderRadius: BorderRadius.circular(8),
             borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
           ),
           enabledBorder: OutlineInputBorder(
@@ -74,13 +74,13 @@ class MedicalPaymentApp extends StatelessWidget {
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.all(12), // Less padding
+          contentPadding: const EdgeInsets.all(12),
           hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
         ),
         
-        // Card Theme - more like the image
+        // Card Theme
         cardTheme: CardTheme(
-          elevation: 1, // Subtle shadow
+          elevation: 1,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -92,36 +92,36 @@ class MedicalPaymentApp extends StatelessWidget {
         textTheme: const TextTheme(
           headlineLarge: TextStyle(
             color: Color(0xFF0F172A),
-            fontSize: 24, // Smaller
+            fontSize: 24,
             fontWeight: FontWeight.w700,
           ),
           headlineMedium: TextStyle(
             color: Color(0xFF0F172A),
-            fontSize: 20, // Smaller
+            fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
           headlineSmall: TextStyle(
             color: Color(0xFF0F172A),
-            fontSize: 18, // Smaller
+            fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
           titleLarge: TextStyle(
             color: Color(0xFF1E293B),
-            fontSize: 16, // Smaller
+            fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
           titleMedium: TextStyle(
             color: Color(0xFF475569),
-            fontSize: 14, // Smaller
+            fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
           bodyLarge: TextStyle(
             color: Color(0xFF475569),
-            fontSize: 14, // Smaller
+            fontSize: 14,
           ),
           bodyMedium: TextStyle(
             color: Color(0xFF64748B),
-            fontSize: 12, // Smaller
+            fontSize: 12,
           ),
           labelMedium: TextStyle(
             color: Color(0xFF64748B),
@@ -148,6 +148,7 @@ class MedicalPaymentApp extends StatelessWidget {
         '/payment-success': (context) => const PaymentSuccessScreen(),
         '/new-payment': (context) => const NewPaymentScreen(),
         '/daily-receipts': (context) => const DailyReceiptsScreen(),
+        '/create-user': (context) => const CreateUserScreen(), // New route added
       },
     );
   }
