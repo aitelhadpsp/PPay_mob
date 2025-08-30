@@ -21,15 +21,9 @@ class _CreateTreatmentScreenState extends State<CreateTreatmentScreen> {
   ];
 
   bool _isLoading = false;
-  String? _patientReference;
   bool _useTemplate = false;
   Treatment? _selectedTemplate;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _patientReference = ModalRoute.of(context)?.settings.arguments as String?;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -632,7 +626,7 @@ class _CreateTreatmentScreenState extends State<CreateTreatmentScreen> {
   }
 
   Future<void> _saveTreatment() async {
-    if (!_formKey.currentState!.validate() || _patientReference == null) {
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
@@ -662,7 +656,7 @@ class _CreateTreatmentScreenState extends State<CreateTreatmentScreen> {
     );
 
     // Add treatment to patient
-    TreatmentService.assignTreatmentToPatient(_patientReference!, newTreatment.id);
+    TreatmentService.createTreatmentTemplate( newTreatment);
 
     setState(() {
       _isLoading = false;

@@ -39,7 +39,7 @@ class _TreatmentManagementScreenState extends State<TreatmentManagementScreen> {
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () {
-              // Navigate to create new treatment template
+              Navigator.pushNamed(context, "/create-treatment");
             },
           ),
         ],

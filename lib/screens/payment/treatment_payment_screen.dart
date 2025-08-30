@@ -178,7 +178,7 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
                         LinearProgressIndicator(
                           value:
                               (treatment!.totalPaidAmount + paymentAmount) /
-                              treatment!.totalPaidAmount + treatment!.remainingAmount,
+                              ((treatment!.totalPaidAmount + treatment!.remainingAmount) == 0 ? 1 :(treatment!.totalPaidAmount + treatment!.remainingAmount) ),
                           backgroundColor: const Color(0xFFE2E8F0),
                           valueColor: const AlwaysStoppedAnimation<Color>(
                             Color(0xFF4F46E5),
