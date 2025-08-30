@@ -17,8 +17,8 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
   bool hasSignature = false;
   String? signaturePath;
   PatientWithTreatments? patient;
-  Treatment? treatment;
-  Installment? installment;
+  PatientTreatment? treatment;
+  PatientInstallment? installment;
   double paymentAmount = 0.0;
   bool isCustomPayment = false;
 
@@ -104,7 +104,7 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
 
                         _buildSummaryRow('Patient', patient!.name),
                         const SizedBox(height: 12),
-                        _buildSummaryRow('Traitement', treatment!.name),
+                        _buildSummaryRow('Traitement', treatment!.id),
                         const SizedBox(height: 12),
                         _buildSummaryRow(
                           'Type de Paiement',
@@ -178,7 +178,7 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
                         LinearProgressIndicator(
                           value:
                               (treatment!.totalPaidAmount + paymentAmount) /
-                              treatment!.totalPrice,
+                              treatment!.totalPaidAmount + treatment!.remainingAmount,
                           backgroundColor: const Color(0xFFE2E8F0),
                           valueColor: const AlwaysStoppedAnimation<Color>(
                             Color(0xFF4F46E5),

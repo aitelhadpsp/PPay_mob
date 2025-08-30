@@ -159,6 +159,7 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
                         'Procéder au Paiement',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
+                          color: Colors.white,
                           fontSize: 16,
                         ),
                       ),
@@ -647,7 +648,7 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
     // Create payment data
     final paymentData = {
       'patient': patient!,
-      'patientTreatment': selectedTreatment!,
+      'treatment': selectedTreatment!,
       'installment': selectedInstallment,
       'amount': _getPaymentAmount(),
       'isCustomPayment': isCustomPayment,
