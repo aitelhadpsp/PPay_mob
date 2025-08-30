@@ -1,6 +1,18 @@
-import 'package:denta_incomes/screens/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+
+import 'screens/home_screen.dart';
+import 'screens/patient/patient_selection_screen.dart';
+import 'screens/patient/patient_details_screen.dart';
+import 'screens/patient/create_user_screen.dart';
+import 'screens/payment/new_payment_screen.dart';
+import 'screens/payment/payment_success_screen.dart';
+import 'screens/payment/daily_receipts_screen.dart';
+import 'screens/payment/treatment_payment_selection_screen.dart';
+import 'screens/payment/treatment_payment_screen.dart';
+import 'screens/treatment/create_treatment_screen.dart';
+import 'screens/treatment/treatment_management_screen.dart';
+import 'screens/treatment/treatment_assignment_screen.dart';
 
 void main() {
   runApp(const MedicalPaymentApp());
@@ -141,10 +153,12 @@ class MedicalPaymentApp extends StatelessWidget {
         '/daily-receipts': (context) => const DailyReceiptsScreen(),
         '/create-user': (context) => const CreateUserScreen(),
         '/patient-details': (context) => const PatientDetailsScreen(),
-        '/create-treatment': (context) => const CreateTreatmentScreen(),
+        '/treatment-management': (context) => const TreatmentManagementScreen(),
+        '/treatment-assignment': (context) => const TreatmentAssignmentScreen(),
         '/treatment-payment-selection':
             (context) => const TreatmentPaymentSelectionScreen(),
         '/treatment-payment': (context) => const TreatmentPaymentScreen(),
+        '/create-treatment': (context) => const CreateTreatmentScreen(),
       },
     );
   }
