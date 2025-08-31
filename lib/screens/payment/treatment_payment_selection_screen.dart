@@ -800,7 +800,7 @@ Widget _buildCustomPaymentOption(PatientTreatmentDto treatment) {
     final result = await Navigator.pushNamed(
       context,
       '/treatment-assignment',
-      arguments: patient!.reference,
+      arguments: patient!.id,
     );
 
     // Refresh patient data if a treatment was assigned
