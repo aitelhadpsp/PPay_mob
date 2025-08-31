@@ -4,8 +4,15 @@ import 'package:flutter/material.dart';
 import '../models/payment.dart';
 import '../models/patient.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -53,12 +60,15 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildUserProfileSection(context),
+            
+            const SizedBox(height: 16),
+            
             // Top Stats Row
             Row(
               children: [
@@ -177,168 +187,220 @@ class HomeScreen extends StatelessWidget {
             // Team Members section
             _buildTeamSection(todayPayments),
 
-            const SizedBox(height: 20),
-
-            // Bottom Navigation
-            _buildBottomNavigation(context),
+            // Add bottom padding to account for bottom navigation
+            const SizedBox(height: 80),
           ],
         ),
       ),
-    );
+  /*     bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: const Color(0xFF4F46E5),
+        unselectedItemColor: const Color(0xFF94A3B8),
+        elevation: 8,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+          _handleNavigation(context, index);
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Accueil',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.task_outlined),
+            label: 'Tâches',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_add_outlined),
+            label: 'Patients',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today_outlined),
+            label: 'Calendrier',
+          ),
+        ],
+      ),
+    */ );
   }
 
-Widget _buildUserProfileSection(BuildContext context) {
-  return FutureBuilder<UserDto?>(
-    future: AuthService.getCurrentUser(),
-    builder: (context, snapshot) {
-      final user = snapshot.data;
-      
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: const Color(0xFF4F46E5),
-              backgroundImage: user?.profileImagePath != null 
-                  ? NetworkImage(user!.profileImagePath!) 
-                  : null,
-              child: user?.profileImagePath == null
-                  ? Text(
-                      user?.fullName.isNotEmpty == true ? user!.fullName[0] : 'U',
+  void _handleNavigation(BuildContext context, int index) {
+    switch (index) {
+      case 0:
+        // Already on home - do nothing
+        break;
+      case 1:
+        Navigator.pushNamed(context, '/daily-receipts');
+        break;
+      case 2:
+        Navigator.pushNamed(context, '/patient-selection');
+        break;
+      case 3:
+        // Calendar functionality - placeholder
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Calendrier bientôt disponible'),
+            backgroundColor: Color(0xFF4F46E5),
+          ),
+        );
+        break;
+    }
+  }
+
+  Widget _buildUserProfileSection(BuildContext context) {
+    return FutureBuilder<UserDto?>(
+      future: AuthService.getCurrentUser(),
+      builder: (context, snapshot) {
+        final user = snapshot.data;
+        
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: const Color(0xFF4F46E5),
+                backgroundImage: user?.profileImagePath != null 
+                    ? NetworkImage(user!.profileImagePath!) 
+                    : null,
+                child: user?.profileImagePath == null
+                    ? Text(
+                        user?.fullName.isNotEmpty == true ? user!.fullName[0] : 'U',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user?.fullName ?? 'Utilisateur',
                       style: const TextStyle(
-                        color: Colors.white,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        fontSize: 18,
+                        color: Color(0xFF1E293B),
                       ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    user?.fullName ?? 'Utilisateur',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1E293B),
+                    ),
+                    Text(
+                      user?.email ?? '',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    Text(
+                      user?.role ?? 'Dentiste',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF4F46E5),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) {
+                  switch (value) {
+                    case 'security':
+                      Navigator.pushNamed(context, '/security-info');
+                      break;
+                    case 'change-password':
+                      Navigator.pushNamed(context, '/change-password');
+                      break;
+                    case 'logout':
+                      _handleLogout(context);
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'security',
+                    child: Row(
+                      children: [
+                        Icon(Icons.security, size: 18),
+                        SizedBox(width: 8),
+                        Text('Sécurité'),
+                      ],
                     ),
                   ),
-                  Text(
-                    user?.email ?? '',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF64748B),
+                  const PopupMenuItem(
+                    value: 'change-password',
+                    child: Row(
+                      children: [
+                        Icon(Icons.lock_outline, size: 18),
+                        SizedBox(width: 8),
+                        Text('Changer mot de passe'),
+                      ],
                     ),
                   ),
-                  Text(
-                    user?.role ?? 'Dentiste',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF4F46E5),
-                      fontWeight: FontWeight.w500,
+                  const PopupMenuItem(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, size: 18, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Se déconnecter', style: TextStyle(color: Colors.red)),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
-              onSelected: (value) {
-                switch (value) {
-                  case 'security':
-                    Navigator.pushNamed(context, '/security-info');
-                    break;
-                  case 'change-password':
-                    Navigator.pushNamed(context, '/change-password');
-                    break;
-                  case 'logout':
-                    _handleLogout(context);
-                    break;
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'security',
-                  child: Row(
-                    children: [
-                      Icon(Icons.security, size: 18),
-                      SizedBox(width: 8),
-                      Text('Sécurité'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'change-password',
-                  child: Row(
-                    children: [
-                      Icon(Icons.lock_outline, size: 18),
-                      SizedBox(width: 8),
-                      Text('Changer mot de passe'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'logout',
-                  child: Row(
-                    children: [
-                      Icon(Icons.logout, size: 18, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Se déconnecter', style: TextStyle(color: Colors.red)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-Future<void> _handleLogout(BuildContext context) async {
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Se déconnecter'),
-      content: const Text('Êtes-vous sûr de vouloir vous déconnecter?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Annuler'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          style: TextButton.styleFrom(foregroundColor: Colors.red),
-          child: const Text('Se déconnecter'),
-        ),
-      ],
-    ),
-  );
-
-  if (confirm == true) {
-    // Show loading
-    showDialog(
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirm = await showDialog<bool>(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
+      builder: (context) => AlertDialog(
+        title: const Text('Se déconnecter'),
+        content: const Text('Êtes-vous sûr de vouloir vous déconnecter?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Se déconnecter'),
+          ),
+        ],
       ),
     );
 
-    await AuthService.logout();
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-  }
-}
+    if (confirm == true) {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
 
+      await AuthService.logout();
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
+  }
 
   Widget _buildCompactStatCard(
     String title,
@@ -577,91 +639,6 @@ Future<void> _handleLogout(BuildContext context) async {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNavigation(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(Icons.home, 'Accueil', true, () {}),
-          _buildNavItem(
-            Icons.task_outlined,
-            'Tâches',
-            false,
-            () => Navigator.pushNamed(context, '/daily-receipts'),
-          ),
-          _buildNavItem(
-            Icons.person_add_outlined,
-            'Patients',
-            false,
-            () => Navigator.pushNamed(context, '/create-user'),
-          ),
-          _buildNavItem(
-            Icons.calendar_today_outlined,
-            'Calendrier',
-            false,
-            () {},
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(
-    IconData icon,
-    String label,
-    bool isActive,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color:
-              isActive
-                  ? const Color(0xFF4F46E5).withOpacity(0.1)
-                  : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color:
-                  isActive ? const Color(0xFF4F46E5) : const Color(0xFF94A3B8),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                color:
-                    isActive
-                        ? const Color(0xFF4F46E5)
-                        : const Color(0xFF94A3B8),
-                fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

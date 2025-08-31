@@ -15,6 +15,7 @@ class _TreatmentPaymentSelectionScreenState
     extends State<TreatmentPaymentSelectionScreen> {
   PatientWithTreatmentsDto? patient;
   PatientTreatmentDto? selectedTreatment;
+  PatientInstallmentDto? selectedInstallment;
   double customPaymentAmount = 0.0;
   final TextEditingController _customAmountController = TextEditingController();
   bool isCustomPayment = false;
@@ -26,7 +27,7 @@ class _TreatmentPaymentSelectionScreenState
     super.didChangeDependencies();
     final int patientReference = 
         ModalRoute.of(context)?.settings.arguments as int? ?? 0;
-    if (patientReference!=0) {
+    if (patientReference != 0) {
       _fetchPatient(patientReference);
     }
   }
@@ -59,8 +60,8 @@ class _TreatmentPaymentSelectionScreenState
             totalAmountPaid: response.data!.totalAmountPaid,
             totalTreatmentCost: response.data!.totalTreatmentCost,
             remainingBalance: response.data!.remainingBalance,
-            treatments:  response.data!.treatments,
-            paymentHistory: response.data!.paymentHistory, 
+            treatments: response.data!.treatments, // This should come from a separate API call
+            paymentHistory: response.data!.paymentHistory, // This should come from a separate API call
           );
           isLoading = false;
         });
@@ -406,111 +407,272 @@ class _TreatmentPaymentSelectionScreenState
     );
   }
 
-  Widget _buildPaymentOptions(PatientTreatmentDto treatment) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Options de Paiement',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1E293B),
-            ),
-          ),
-          const SizedBox(height: 12),
+Widget _buildPaymentOptions(PatientTreatmentDto treatment) {
+  // Get unpaid installments sorted by order
+  final unpaidInstallments = treatment.installments
+      .where((installment) => !installment.isPaid)
+      .toList()
+    ..sort((a, b) => a.order.compareTo(b.order));
 
-          // Custom payment option
-          GestureDetector(
-            onTap: _selectCustomPayment,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isCustomPayment
-                    ? const Color(0xFF10B981).withOpacity(0.1)
-                    : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isCustomPayment
-                      ? const Color(0xFF10B981)
-                      : const Color(0xFFE2E8F0),
+  // Find the next installment to pay (first unpaid)
+  final nextInstallment = unpaidInstallments.isNotEmpty ? unpaidInstallments.first : null;
+  
+  // Check if all obligatory installments are paid
+  final allObligatoryPaid = treatment.areObligatoryInstallmentsPaid;
+
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: const BoxDecoration(
+      border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Options de Paiement',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1E293B),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Show next installment if available
+        if (nextInstallment != null) ...[
+          _buildInstallmentOption(nextInstallment, true), // Next to pay
+          const SizedBox(height: 8),
+        ],
+
+        // Show other unpaid installments (not payable yet if obligatory order matters)
+        if (unpaidInstallments.length > 1) ...[
+          ...unpaidInstallments.skip(1).map((installment) => 
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildInstallmentOption(installment, false), // Not next
+            )
+          ),
+        ],
+
+        // Show custom payment option only if all obligatory installments are paid
+        if (allObligatoryPaid && treatment.remainingAmount > 0) ...[
+          if (unpaidInstallments.isNotEmpty) const SizedBox(height: 8),
+          _buildCustomPaymentOption(treatment),
+        ],
+      ],
+    ),
+  );
+}
+
+Widget _buildInstallmentOption(PatientInstallmentDto installment, bool isNextToPay) {
+  final isSelected = selectedInstallment?.id == installment.id;
+  
+  return GestureDetector(
+    onTap: isNextToPay ? () => _selectInstallment(installment) : null,
+    child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? const Color(0xFF4F46E5).withOpacity(0.1)
+            : isNextToPay
+                ? const Color(0xFFF8FAFC)
+                : const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isSelected
+              ? const Color(0xFF4F46E5)
+              : isNextToPay
+                  ? const Color(0xFFE2E8F0)
+                  : const Color(0xFFD1D5DB),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: installment.isObligatory
+                  ? const Color(0xFFEF4444)
+                  : const Color(0xFF3B82F6),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Center(
+              child: Text(
+                '${installment.order}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF10B981),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Montant Personnalisé',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        'Max: ${treatment.remainingAmount.toInt()} DH',
-                        style: const TextStyle(
-                          color: Color(0xFF64748B),
-                          fontSize: 12,
-                        ),
-                      ),
-                      if (isCustomPayment)
-                        const Icon(
-                          Icons.check_circle,
-                          color: Color(0xFF10B981),
-                          size: 18,
-                        ),
-                    ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  installment.description,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    color: isNextToPay ? const Color(0xFF1E293B) : const Color(0xFF64748B),
                   ),
-                  if (isCustomPayment) ...[
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _customAmountController,
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        setState(() {
-                          customPaymentAmount = double.tryParse(value) ?? 0.0;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Montant à payer (DH)',
-                        prefixIcon: const Icon(Icons.attach_money, size: 20),
-                        suffix: const Text('DH'),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: installment.isObligatory
+                            ? const Color(0xFFEF4444).withOpacity(0.1)
+                            : const Color(0xFF3B82F6).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        installment.isObligatory ? 'Obligatoire' : 'Optionnel',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: installment.isObligatory
+                              ? const Color(0xFFEF4444)
+                              : const Color(0xFF3B82F6),
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
+                    if (!isNextToPay) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF64748B).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'En attente',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${installment.amount.toInt()} DH',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  color: isNextToPay ? const Color(0xFF1E293B) : const Color(0xFF64748B),
+                ),
+              ),
+              if (isSelected)
+                const Icon(
+                  Icons.check_circle,
+                  color: Color(0xFF4F46E5),
+                  size: 18,
+                ),
+            ],
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
+Widget _buildCustomPaymentOption(PatientTreatmentDto treatment) {
+  return GestureDetector(
+    onTap: _selectCustomPayment,
+    child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isCustomPayment
+            ? const Color(0xFF10B981).withOpacity(0.1)
+            : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isCustomPayment
+              ? const Color(0xFF10B981)
+              : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF10B981),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Montant Personnalisé',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Text(
+                'Max: ${treatment.remainingAmount.toInt()} DH',
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12,
+                ),
+              ),
+              if (isCustomPayment)
+                const Icon(
+                  Icons.check_circle,
+                  color: Color(0xFF10B981),
+                  size: 18,
+                ),
+            ],
+          ),
+          if (isCustomPayment) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _customAmountController,
+              keyboardType: TextInputType.number,
+              onChanged: (value) {
+                setState(() {
+                  customPaymentAmount = double.tryParse(value) ?? 0.0;
+                });
+              },
+              decoration: InputDecoration(
+                hintText: 'Montant à payer (DH)',
+                prefixIcon: const Icon(Icons.attach_money, size: 20),
+                suffix: const Text('DH'),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+}
   Widget _buildContinuePaymentSection() {
     return Container(
       color: Colors.white,
@@ -571,6 +733,16 @@ class _TreatmentPaymentSelectionScreenState
   void _selectTreatment(PatientTreatmentDto treatment) {
     setState(() {
       selectedTreatment = treatment;
+      selectedInstallment = null;
+      isCustomPayment = false;
+      customPaymentAmount = 0.0;
+      _customAmountController.clear();
+    });
+  }
+
+  void _selectInstallment(PatientInstallmentDto installment) {
+    setState(() {
+      selectedInstallment = installment;
       isCustomPayment = false;
       customPaymentAmount = 0.0;
       _customAmountController.clear();
@@ -579,26 +751,37 @@ class _TreatmentPaymentSelectionScreenState
 
   void _selectCustomPayment() {
     setState(() {
+      selectedInstallment = null;
       isCustomPayment = true;
     });
   }
 
   bool _canProceedToPayment() {
     if (selectedTreatment == null) return false;
+    
+    // Can pay if an installment is selected
+    if (selectedInstallment != null) return true;
+    
+    // Can pay custom amount if all obligatory installments are paid and amount is valid
     if (isCustomPayment &&
         customPaymentAmount > 0 &&
         customPaymentAmount <= selectedTreatment!.remainingAmount) {
       return true;
     }
+    
     return false;
   }
 
   double _getPaymentAmount() {
+    if (selectedInstallment != null) return selectedInstallment!.amount;
     if (isCustomPayment) return customPaymentAmount;
     return 0.0;
   }
 
   String _getPaymentSummaryText() {
+    if (selectedInstallment != null) {
+      return 'Échéance ${selectedInstallment!.order}: ${selectedInstallment!.description}';
+    }
     if (isCustomPayment) return 'Paiement libre';
     return '';
   }
@@ -617,7 +800,7 @@ class _TreatmentPaymentSelectionScreenState
     final result = await Navigator.pushNamed(
       context,
       '/treatment-assignment',
-      arguments: patient!.id,
+      arguments: patient!.reference,
     );
 
     // Refresh patient data if a treatment was assigned
@@ -632,8 +815,10 @@ class _TreatmentPaymentSelectionScreenState
     final paymentData = {
       'patient': patient!,
       'treatment': selectedTreatment!,
+      'installment': selectedInstallment, // Can be null for custom payments
       'amount': _getPaymentAmount(),
       'isCustomPayment': isCustomPayment,
+      'isInstallmentPayment': selectedInstallment != null,
     };
 
     Navigator.pushNamed(context, '/treatment-payment', arguments: paymentData);
