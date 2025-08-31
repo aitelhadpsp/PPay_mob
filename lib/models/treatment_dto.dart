@@ -119,9 +119,8 @@ class TreatmentTemplateDto {
   factory TreatmentTemplateDto.fromJson(Map<String, dynamic> json) {
     // Extract installmentTemplates safely
     List<InstallmentTemplateDto> installments = [];
-    if (json['installmentTemplates'] != null &&
-        json['installmentTemplates'] is Map<String, dynamic>) {
-      final values = (json['installmentTemplates'] as Map<String, dynamic>)['\$values'];
+    if (json['installmentTemplates'] != null ) {
+      final values = json['installmentTemplates'] ;
       if (values is List) {
         installments = values
             .map((e) => InstallmentTemplateDto.fromJson(e as Map<String, dynamic>))

@@ -338,7 +338,7 @@ class _TreatmentManagementScreenState extends State<TreatmentManagementScreen> {
                 const SizedBox(height: 12),
                 ...treatment.installmentTemplates.map((installment) {
                   return Container(
-                  
+
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(

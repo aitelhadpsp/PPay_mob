@@ -13,7 +13,7 @@ class TreatmentAssignmentScreen extends StatefulWidget {
 }
 
 class _TreatmentAssignmentScreenState extends State<TreatmentAssignmentScreen> {
-  String? patientReference;
+  int? patientReference;
   PatientDto? patient;
   TreatmentTemplateDto? selectedTreatment;
   String selectedCategory = 'Tous';
@@ -34,7 +34,7 @@ class _TreatmentAssignmentScreenState extends State<TreatmentAssignmentScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (patientReference == null) {
-      patientReference = ModalRoute.of(context)?.settings.arguments as String?;
+      patientReference = ModalRoute.of(context)?.settings.arguments as int?;
       if (patientReference != null) {
         _loadData();
       }
@@ -46,7 +46,7 @@ class _TreatmentAssignmentScreenState extends State<TreatmentAssignmentScreen> {
     
     try {
       // Load patient data
-      final patientResponse = await PatientService.getPatientByReference(patientReference!);
+      final patientResponse = await PatientService.getPatient(patientReference!);
       if (patientResponse.success && patientResponse.data != null) {
         setState(() {
           patient = patientResponse.data;

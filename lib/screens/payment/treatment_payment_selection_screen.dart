@@ -1,5 +1,5 @@
 import 'package:denta_incomes/models/patient_dto.dart';
-import 'package:denta_incomes/models/treatment.dart';
+import 'package:denta_incomes/models/treatment_dto.dart';
 import 'package:denta_incomes/services/patient_service.dart';
 import 'package:flutter/material.dart';
 
@@ -7,13 +7,14 @@ class TreatmentPaymentSelectionScreen extends StatefulWidget {
   const TreatmentPaymentSelectionScreen({Key? key}) : super(key: key);
 
   @override
-  State<TreatmentPaymentSelectionScreen> createState() => _TreatmentPaymentSelectionScreenState();
+  State<TreatmentPaymentSelectionScreen> createState() => 
+      _TreatmentPaymentSelectionScreenState();
 }
 
-class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelectionScreen> {
+class _TreatmentPaymentSelectionScreenState 
+    extends State<TreatmentPaymentSelectionScreen> {
   PatientWithTreatmentsDto? patient;
-  PatientTreatment? selectedTreatment;
-  PatientInstallment? selectedInstallment;
+  PatientTreatmentDto? selectedTreatment;
   double customPaymentAmount = 0.0;
   final TextEditingController _customAmountController = TextEditingController();
   bool isCustomPayment = false;
@@ -23,8 +24,11 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final int patientReference = ModalRoute.of(context)?.settings.arguments as int? ?? 0;
-    _fetchPatient(patientReference);
+    final int patientReference = 
+        ModalRoute.of(context)?.settings.arguments as int? ?? 0;
+    if (patientReference!=0) {
+      _fetchPatient(patientReference);
+    }
   }
 
   Future<void> _fetchPatient(int reference) async {
@@ -36,8 +40,28 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
     try {
       final response = await PatientService.getPatientWithTreatments(reference);
       if (response.success && response.data != null) {
+        // Convert PatientDto to PatientWithTreatmentsDto if needed
+        // For now, assuming you have the treatments data
         setState(() {
-          patient = response.data;
+          patient = PatientWithTreatmentsDto(
+            id: response.data!.id,
+            name: response.data!.name,
+            reference: response.data!.reference,
+            phone: response.data!.phone,
+            email: response.data!.email,
+            address: response.data!.address,
+            gender: response.data!.gender,
+            birthDate: response.data!.birthDate,
+            medicalNotes: response.data!.medicalNotes,
+            createdDate: response.data!.createdDate,
+            isActive: response.data!.isActive,
+            age: response.data!.age,
+            totalAmountPaid: response.data!.totalAmountPaid,
+            totalTreatmentCost: response.data!.totalTreatmentCost,
+            remainingBalance: response.data!.remainingBalance,
+            treatments:  response.data!.treatments,
+            paymentHistory: response.data!.paymentHistory, 
+          );
           isLoading = false;
         });
       } else {
@@ -58,6 +82,7 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Scaffold(
+        backgroundColor: Color(0xFFF1F5F9),
         body: Center(child: CircularProgressIndicator()),
       );
     }
@@ -65,8 +90,30 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
     if (errorMessage != null || patient == null) {
       return Scaffold(
         backgroundColor: const Color(0xFFF1F5F9),
-        appBar: AppBar(title: const Text('Patient Introuvable')),
-        body: Center(child: Text(errorMessage ?? 'Patient non trouvé')),
+        appBar: AppBar(
+          title: const Text('Patient Introuvable'),
+          backgroundColor: Colors.white,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                errorMessage ?? 'Patient non trouvé',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
@@ -76,6 +123,14 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
         title: const Text('Nouveau Paiement'),
         backgroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          // Add Treatment button in app bar
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Assigner un traitement',
+            onPressed: () => _navigateToAssignTreatment(),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -102,7 +157,10 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
             backgroundColor: const Color(0xFF4F46E5),
             child: Text(
               patient!.name[0].toUpperCase(),
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -110,12 +168,42 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(patient!.name,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
-                Text('Ref: ${patient!.reference}',
-                    style: const TextStyle(color: Color(0xFF64748B), fontSize: 14)),
+                Text(
+                  patient!.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                Text(
+                  'Ref: ${patient!.reference}',
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 14,
+                  ),
+                ),
               ],
+            ),
+          ),
+          // Financial summary
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: patient!.remainingBalance > 0
+                  ? const Color(0xFFEF4444).withOpacity(0.1)
+                  : const Color(0xFF10B981).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Reste: ${patient!.remainingBalance.toInt()} DH',
+              style: TextStyle(
+                color: patient!.remainingBalance > 0
+                    ? const Color(0xFFEF4444)
+                    : const Color(0xFF10B981),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
             ),
           ),
         ],
@@ -131,22 +219,53 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
                 color: const Color(0xFF4F46E5).withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.medical_services_outlined, size: 40, color: Color(0xFF4F46E5)),
+              child: const Icon(
+                Icons.medical_services_outlined,
+                size: 60,
+                color: Color(0xFF4F46E5),
+              ),
             ),
-            const SizedBox(height: 20),
-            const Text('Aucun Traitement Assigné',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
-            const SizedBox(height: 8),
+            const SizedBox(height: 24),
             const Text(
+              'Aucun Traitement Assigné',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
               'Ce patient n\'a pas encore de traitement assigné.\nAssignez un traitement pour commencer les paiements.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _navigateToAssignTreatment,
+                icon: const Icon(Icons.add),
+                label: const Text('Assigner un Traitement'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4F46E5),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -161,6 +280,7 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
       itemBuilder: (context, index) {
         final treatment = patient!.treatments[index];
         final isSelected = selectedTreatment?.id == treatment.id;
+        final hasPayableAmount = treatment.remainingAmount > 0;
 
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -168,24 +288,117 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFFE2E8F0),
+              color: isSelected
+                  ? const Color(0xFF4F46E5)
+                  : const Color(0xFFE2E8F0),
               width: isSelected ? 2 : 1,
             ),
           ),
           child: Column(
             children: [
               ListTile(
-               // onTap: () => _selectTreatment(treatment),
-                leading: Icon(Icons.medical_services,
-                    color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF64748B)),
-                title: Text(treatment.treatmentName,
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF1E293B))),
-                subtitle: Text('Prix: ${treatment.totalPrice.toInt()} DH - Payé: ${treatment.totalPrice.toInt()} DH',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                onTap: hasPayableAmount ? () => _selectTreatment(treatment) : null,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _getTreatmentStatusColor(treatment).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.medical_services,
+                    color: _getTreatmentStatusColor(treatment),
+                  ),
+                ),
+                title: Text(
+                  treatment.treatmentName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: isSelected
+                        ? const Color(0xFF4F46E5)
+                        : const Color(0xFF1E293B),
+                  ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    Text(
+                      'Total: ${treatment.totalPrice.toInt()} DH • Payé: ${treatment.totalPaidAmount.toInt()} DH',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: LinearProgressIndicator(
+                            value: treatment.totalPrice > 0
+                                ? treatment.totalPaidAmount / treatment.totalPrice
+                                : 0,
+                            backgroundColor: const Color(0xFFE2E8F0),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              _getTreatmentStatusColor(treatment),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${((treatment.totalPaidAmount / treatment.totalPrice) * 100).toInt()}%',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getTreatmentStatusColor(treatment).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        treatment.remainingAmount > 0 ? 'En cours' : 'Terminé',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: _getTreatmentStatusColor(treatment),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (treatment.remainingAmount > 0)
+                      Text(
+                        'Reste: ${treatment.remainingAmount.toInt()} DH',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFEF4444),
+                        ),
+                      ),
+                    if (isSelected)
+                      const Icon(
+                        Icons.check_circle,
+                        color: Color(0xFF4F46E5),
+                        size: 18,
+                      ),
+                  ],
+                ),
               ),
-              //if (isSelected) _buildPaymentOptions(treatment),
+              if (isSelected && hasPayableAmount) 
+                _buildPaymentOptions(treatment),
             ],
           ),
         );
@@ -193,62 +406,106 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
     );
   }
 
-  Widget _buildPaymentOptions(PatientTreatment treatment) {
+  Widget _buildPaymentOptions(PatientTreatmentDto treatment) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFE2E8F0)))),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Options de Paiement',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+          const Text(
+            'Options de Paiement',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1E293B),
+            ),
+          ),
           const SizedBox(height: 12),
-          if (treatment.remainingAmount > 0)
-            GestureDetector(
-              onTap: _selectCustomPayment,
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isCustomPayment ? const Color(0xFF10B981).withOpacity(0.1) : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                      color: isCustomPayment ? const Color(0xFF10B981) : const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                            child: Text('Montant Personnalisé',
-                                style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14))),
-                        Text('Max: ${treatment.remainingAmount.toInt()} DH',
-                            style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)),
-                        if (isCustomPayment) const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 18),
-                      ],
-                    ),
-                    if (isCustomPayment)
-                      TextField(
-                        controller: _customAmountController,
-                        keyboardType: TextInputType.number,
-                        onChanged: (value) {
-                          setState(() {
-                            customPaymentAmount = double.tryParse(value) ?? 0.0;
-                          });
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'Montant à payer (DH)',
-                          prefixIcon: const Icon(Icons.attach_money, size: 20),
-                          suffix: const Text('DH'),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                      ),
-                  ],
+
+          // Custom payment option
+          GestureDetector(
+            onTap: _selectCustomPayment,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isCustomPayment
+                    ? const Color(0xFF10B981).withOpacity(0.1)
+                    : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isCustomPayment
+                      ? const Color(0xFF10B981)
+                      : const Color(0xFFE2E8F0),
                 ),
               ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF10B981),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Montant Personnalisé',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        'Max: ${treatment.remainingAmount.toInt()} DH',
+                        style: const TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (isCustomPayment)
+                        const Icon(
+                          Icons.check_circle,
+                          color: Color(0xFF10B981),
+                          size: 18,
+                        ),
+                    ],
+                  ),
+                  if (isCustomPayment) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _customAmountController,
+                      keyboardType: TextInputType.number,
+                      onChanged: (value) {
+                        setState(() {
+                          customPaymentAmount = double.tryParse(value) ?? 0.0;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Montant à payer (DH)',
+                        prefixIcon: const Icon(Icons.attach_money, size: 20),
+                        suffix: const Text('DH'),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
+          ),
         ],
       ),
     );
@@ -262,14 +519,28 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(_getPaymentSummaryText(),
-                    style: const TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF1E293B))),
-                Text('${_getPaymentAmount().toInt()} DH',
-                    style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF4F46E5), fontSize: 18)),
+                Text(
+                  _getPaymentSummaryText(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                Text(
+                  '${_getPaymentAmount().toInt()} DH',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF4F46E5),
+                    fontSize: 18,
+                  ),
+                ),
               ],
             ),
           ),
@@ -278,8 +549,18 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _proceedToPayment,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4F46E5), padding: const EdgeInsets.symmetric(vertical: 16)),
-              child: const Text('Procéder au Paiement', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 16)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4F46E5),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: const Text(
+                'Procéder au Paiement',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+              ),
             ),
           ),
         ],
@@ -287,10 +568,9 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
     );
   }
 
-  void _selectTreatment(PatientTreatment treatment) {
+  void _selectTreatment(PatientTreatmentDto treatment) {
     setState(() {
       selectedTreatment = treatment;
-      selectedInstallment = null;
       isCustomPayment = false;
       customPaymentAmount = 0.0;
       _customAmountController.clear();
@@ -299,14 +579,17 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
 
   void _selectCustomPayment() {
     setState(() {
-      selectedInstallment = null;
       isCustomPayment = true;
     });
   }
 
   bool _canProceedToPayment() {
     if (selectedTreatment == null) return false;
-    if (isCustomPayment && customPaymentAmount > 0 && customPaymentAmount <= selectedTreatment!.remainingAmount) return true;
+    if (isCustomPayment &&
+        customPaymentAmount > 0 &&
+        customPaymentAmount <= selectedTreatment!.remainingAmount) {
+      return true;
+    }
     return false;
   }
 
@@ -316,8 +599,31 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
   }
 
   String _getPaymentSummaryText() {
-    if (isCustomPayment) return 'Paiement libre - ';
+    if (isCustomPayment) return 'Paiement libre';
     return '';
+  }
+
+  Color _getTreatmentStatusColor(PatientTreatmentDto treatment) {
+    if (treatment.remainingAmount <= 0) {
+      return const Color(0xFF10B981); // Green for completed
+    } else if (treatment.areObligatoryInstallmentsPaid) {
+      return const Color(0xFF3B82F6); // Blue for in progress
+    } else {
+      return const Color(0xFFEF4444); // Red for pending
+    }
+  }
+
+  Future<void> _navigateToAssignTreatment() async {
+    final result = await Navigator.pushNamed(
+      context,
+      '/treatment-assignment',
+      arguments: patient!.id,
+    );
+
+    // Refresh patient data if a treatment was assigned
+    if (result == true) {
+      _fetchPatient(patient!.id);
+    }
   }
 
   void _proceedToPayment() {
@@ -326,7 +632,6 @@ class _TreatmentPaymentSelectionScreenState extends State<TreatmentPaymentSelect
     final paymentData = {
       'patient': patient!,
       'treatment': selectedTreatment!,
-      'installment': selectedInstallment,
       'amount': _getPaymentAmount(),
       'isCustomPayment': isCustomPayment,
     };

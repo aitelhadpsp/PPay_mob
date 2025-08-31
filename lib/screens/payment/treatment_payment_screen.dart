@@ -1,7 +1,9 @@
 import 'package:denta_incomes/models/enums.dart';
 import 'package:denta_incomes/models/patient.dart';
+import 'package:denta_incomes/models/patient_dto.dart';
 import 'package:denta_incomes/models/payment.dart';
 import 'package:denta_incomes/models/treatment.dart';
+import 'package:denta_incomes/models/treatment_dto.dart';
 import 'package:denta_incomes/services/treatment_service.dart';
 import 'package:denta_incomes/widgets/signature_box.dart';
 import 'package:flutter/material.dart';
@@ -16,9 +18,9 @@ class TreatmentPaymentScreen extends StatefulWidget {
 class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
   bool hasSignature = false;
   String? signaturePath;
-  PatientWithTreatments? patient;
-  PatientTreatment? treatment;
-  PatientInstallment? installment;
+  PatientWithTreatmentsDto? patient;
+  PatientTreatmentDto? treatment;
+  PatientInstallmentDto? installment;
   double paymentAmount = 0.0;
   bool isCustomPayment = false;
 
@@ -104,7 +106,7 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
 
                         _buildSummaryRow('Patient', patient!.name),
                         const SizedBox(height: 12),
-                        _buildSummaryRow('Traitement', treatment!.id),
+                        _buildSummaryRow('Traitement', treatment!.id.toString()),
                         const SizedBox(height: 12),
                         _buildSummaryRow(
                           'Type de Paiement',
@@ -353,7 +355,7 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
         ),
         Expanded(
           child: Text(
-            value,
+            value.toString(),
             textAlign: TextAlign.right,
             style: const TextStyle(
               color: Color(0xFF1E293B),
@@ -369,16 +371,16 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
   void _confirmPayment() {
     // Create payment record
     final paymentId = DateTime.now().millisecondsSinceEpoch.toString();
-    final paymentRecord = PaymentRecord(
+  /*   final paymentRecord = PaymentRecord(
       id: paymentId,
-      treatmentId: treatment!.id,
+      treatmentId: treatment!.id.toString(),
       installmentId:
           installment?.id ?? 'custom_${DateTime.now().millisecondsSinceEpoch}',
       amount: paymentAmount,
       date: DateTime.now(),
       signature: signaturePath,
       type: isCustomPayment ? PaymentType.partial : PaymentType.installment,
-    );
+    ); */
 
     // Add payment to patient
     //TreatmentService.addPaymentToPatient(patient!.reference, paymentRecord);
