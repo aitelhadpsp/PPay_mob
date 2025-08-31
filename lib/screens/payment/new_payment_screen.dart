@@ -1,3 +1,4 @@
+import 'package:denta_incomes/models/patient_dto.dart';
 import 'package:flutter/material.dart';
 import '../../models/patient.dart';
 import '../../widgets/signature_box.dart';
@@ -24,9 +25,8 @@ class _NewPaymentScreenState extends State<NewPaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Patient patient =
-        ModalRoute.of(context)?.settings.arguments as Patient? ??
-        Patient(name: "Abdelhak Ait elhad", reference: "9090");
+    final PatientSummaryDto? patient =
+        ModalRoute.of(context)?.settings.arguments as PatientSummaryDto?;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
@@ -56,7 +56,7 @@ class _NewPaymentScreenState extends State<NewPaymentScreen> {
                           radius: 24,
                           backgroundColor: const Color(0xFF4F46E5),
                           child: Text(
-                            patient.name[0].toUpperCase(),
+                            patient?.name[0].toUpperCase()??"",
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
@@ -70,7 +70,7 @@ class _NewPaymentScreenState extends State<NewPaymentScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                patient.name,
+                                patient?.name??"",
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -79,7 +79,7 @@ class _NewPaymentScreenState extends State<NewPaymentScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Ref: ${patient.reference}',
+                                'Ref: ${patient?.reference}',
                                 style: const TextStyle(
                                   color: Color(0xFF64748B),
                                   fontSize: 12,

@@ -1,3 +1,7 @@
+import 'package:denta_incomes/screens/auth/change_password_screen.dart';
+import 'package:denta_incomes/screens/auth/checkAuth.dart';
+import 'package:denta_incomes/screens/auth/forgot_password_screen.dart';
+import 'package:denta_incomes/screens/auth/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -143,10 +147,13 @@ class MedicalPaymentApp extends StatelessWidget {
         ),
       ),
 
-      home: const HomeScreen(),
-
+      home: AuthCheckScreen(),
       routes: {
-        '/home': (context) => const HomeScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/forgot-password': (context) => const ForgotPasswordScreen(),
+        '/change-password': (context) => const ChangePasswordScreen(),
+/*         '/security-info': (context) => const SecurityInfoScreen(),
+ */        '/home': (context) => const HomeScreen(),
         '/patient-selection': (context) => const PatientSelectionScreen(),
         '/payment-success': (context) => const PaymentSuccessScreen(),
         '/new-payment': (context) => const NewPaymentScreen(),

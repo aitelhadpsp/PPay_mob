@@ -381,7 +381,7 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
     );
 
     // Add payment to patient
-    TreatmentService.addPaymentToPatient(patient!.reference, paymentRecord);
+    //TreatmentService.addPaymentToPatient(patient!.reference, paymentRecord);
 
     // Show success and navigate
     ScaffoldMessenger.of(context).showSnackBar(

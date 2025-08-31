@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../models/patient.dart';
+import '../../models/patient_dto.dart';
+import '../../services/patient_service.dart';
 
 class CreateUserScreen extends StatefulWidget {
   const CreateUserScreen({Key? key}) : super(key: key);
@@ -20,6 +21,9 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   String? _selectedGender;
   DateTime? _selectedBirthDate;
   bool _isLoading = false;
+  bool _isGeneratingReference = false;
+  bool _isValidatingReference = false;
+  String? _referenceError;
 
   final List<String> _genderOptions = ['Homme', 'Femme'];
 
@@ -30,9 +34,67 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     _generateReference();
   }
 
-  void _generateReference() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-    _referenceController.text = timestamp.substring(timestamp.length - 6);
+  Future<void> _generateReference() async {
+    setState(() {
+      _isGeneratingReference = true;
+      _referenceError = null;
+    });
+
+    try {
+      final response = await PatientService.generateReference();
+      if (response.success && response.data != null) {
+        setState(() {
+          _referenceController.text = response.data!;
+        });
+      } else {
+        // Fallback to timestamp-based generation
+        final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+        setState(() {
+          _referenceController.text = timestamp.substring(timestamp.length - 6);
+        });
+      }
+    } catch (e) {
+      // Fallback to timestamp-based generation
+      final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+      setState(() {
+        _referenceController.text = timestamp.substring(timestamp.length - 6);
+      });
+    } finally {
+      setState(() {
+        _isGeneratingReference = false;
+      });
+    }
+  }
+
+  Future<void> _validateReference(String reference) async {
+    if (reference.isEmpty) {
+      setState(() {
+        _referenceError = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isValidatingReference = true;
+      _referenceError = null;
+    });
+
+    try {
+      final response = await PatientService.validateReference(reference, null);
+      if (response.success) {
+        if (response.data != true) {
+          setState(() {
+            _referenceError = 'Cette référence existe déjà';
+          });
+        }
+      }
+    } catch (e) {
+      // Ignore validation errors to avoid blocking the user
+    } finally {
+      setState(() {
+        _isValidatingReference = false;
+      });
+    }
   }
 
   @override
@@ -45,12 +107,12 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         elevation: 0,
         actions: [
           TextButton(
-            onPressed: _isFormValid() ? _savePatient : null,
+            onPressed: (_isFormValid() && !_isLoading) ? _savePatient : null,
             child: Text(
               'Enregistrer',
               style: TextStyle(
                 color:
-                    _isFormValid()
+                    (_isFormValid() && !_isLoading)
                         ? const Color(0xFF4F46E5)
                         : const Color(0xFF94A3B8),
                 fontWeight: FontWeight.w600,
@@ -102,17 +164,46 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                           children: [
                             Expanded(
                               flex: 2,
-                              child: _buildTextField(
-                                controller: _referenceController,
-                                label: 'Référence *',
-                                hint: 'Ex: 123456',
-                                icon: Icons.badge_outlined,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'La référence est obligatoire';
-                                  }
-                                  return null;
-                                },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildTextField(
+                                    controller: _referenceController,
+                                    label: 'Référence *',
+                                    hint: 'Ex: 123456',
+                                    icon: Icons.badge_outlined,
+                                    onChanged: _validateReference,
+                                    validator: (value) {
+                                      if (value == null || value.trim().isEmpty) {
+                                        return 'La référence est obligatoire';
+                                      }
+                                      if (_referenceError != null) {
+                                        return _referenceError;
+                                      }
+                                      return null;
+                                    },
+                                    suffixIcon: _isValidatingReference
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                  if (_referenceError != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        _referenceError!,
+                                        style: const TextStyle(
+                                          color: Color(0xFFEF4444),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -120,8 +211,16 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                             Container(
                               margin: const EdgeInsets.only(top: 24),
                               child: IconButton(
-                                onPressed: _generateReference,
-                                icon: const Icon(Icons.refresh),
+                                onPressed: _isGeneratingReference ? null : _generateReference,
+                                icon: _isGeneratingReference
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(Icons.refresh),
                                 style: IconButton.styleFrom(
                                   backgroundColor: const Color(
                                     0xFF4F46E5,
@@ -298,6 +397,15 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                           hint: 'patient@email.com',
                           icon: Icons.email_outlined,
                           keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                            if (value != null && value.isNotEmpty) {
+                              final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                              if (!emailRegex.hasMatch(value)) {
+                                return 'Format d\'email invalide';
+                              }
+                            }
+                            return null;
+                          },
                         ),
 
                         const SizedBox(height: 16),
@@ -341,9 +449,9 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
       // Floating Action Button - only shows when required fields are filled
       floatingActionButton:
-          _isFormValid()
+          (_isFormValid() && !_isLoading)
               ? FloatingActionButton.extended(
-                onPressed: _isLoading ? null : _savePatient,
+                onPressed: _savePatient,
                 backgroundColor: const Color(0xFF4F46E5),
                 icon:
                     _isLoading
@@ -522,6 +630,8 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
     String? Function(String?)? validator,
+    void Function(String)? onChanged,
+    Widget? suffixIcon,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -540,10 +650,16 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
           keyboardType: keyboardType,
           maxLines: maxLines,
           validator: validator,
-          onChanged: (value) => setState(() {}), // Update progress
+          onChanged: (value) {
+            setState(() {}); // Update progress
+            if (onChanged != null) {
+              onChanged(value);
+            }
+          },
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 20),
+            suffixIcon: suffixIcon,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -556,6 +672,17 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(
                 color: Color(0xFF4F46E5),
+                width: 1.5,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFEF4444)),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(
+                color: Color(0xFFEF4444),
                 width: 1.5,
               ),
             ),
@@ -593,13 +720,15 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
   bool _isFormValid() {
     return _nameController.text.trim().isNotEmpty &&
-        _referenceController.text.trim().isNotEmpty;
+        _referenceController.text.trim().isNotEmpty &&
+        _referenceError == null &&
+        !_isValidatingReference;
   }
 
   int _getCompletedRequiredFieldsCount() {
     int count = 0;
     if (_nameController.text.trim().isNotEmpty) count++;
-    if (_referenceController.text.trim().isNotEmpty) count++;
+    if (_referenceController.text.trim().isNotEmpty && _referenceError == null) count++;
     return count;
   }
 
@@ -608,43 +737,110 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       return;
     }
 
+    // Check if reference validation is still in progress
+    if (_isValidatingReference) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Validation de la référence en cours...'),
+          backgroundColor: Color(0xFFF59E0B),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Create patient DTO
+      final createPatientDto = CreatePatientDto(
+        name: _nameController.text.trim(),
+        reference: _referenceController.text.trim(),
+        phone: _phoneController.text.trim().isNotEmpty 
+            ? _phoneController.text.trim() 
+            : null,
+        email: _emailController.text.trim().isNotEmpty 
+            ? _emailController.text.trim() 
+            : null,
+        address: _addressController.text.trim().isNotEmpty 
+            ? _addressController.text.trim() 
+            : null,
+        gender: _selectedGender,
+        birthDate: _selectedBirthDate,
+        medicalNotes: _notesController.text.trim().isNotEmpty 
+            ? _notesController.text.trim() 
+            : null,
+      );
 
-    // Create new patient with only name and reference (required fields)
-    final newPatient = Patient(
-      name: _nameController.text.trim(),
-      reference: _referenceController.text.trim(),
-    );
+      // Call API
+      final response = await PatientService.createPatient(createPatientDto);
 
-    setState(() {
-      _isLoading = false;
-    });
-
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text('Patient ${newPatient.name} créé avec succès!'),
+      if (response.success && response.data != null) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Patient ${response.data!.name} créé avec succès!'),
+                ),
+              ],
             ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF10B981),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
 
-    // Navigate back with result
-    Navigator.pop(context, newPatient);
+        // Navigate back with result
+        Navigator.pop(context, response.data);
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    response.message ?? 'Erreur lors de la création du patient',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Erreur inattendue: ${e.toString()}'),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   String _formatDate(DateTime date) {

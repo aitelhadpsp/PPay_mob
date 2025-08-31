@@ -1,370 +1,255 @@
-import '../models/patient.dart';
-import '../models/treatment.dart';
-import '../models/payment.dart';
-import '../models/enums.dart';
+import 'package:denta_incomes/models/api_response_dto.dart';
+import 'package:denta_incomes/models/treatment_dto.dart';
+import 'package:denta_incomes/utils/api_client.dart';
 
 class TreatmentService {
-  // Mock patient data with treatments
-  static List<PatientWithTreatments> mockPatients = [
-    PatientWithTreatments(
-      name: "Abdelhak Ait elhad",
-      reference: "9090",
-      phone: "+212 6 12 34 56 78",
-      email: "abdelhak@email.com",
-      treatments: [
-        PatientTreatment(
-          id: "pt1",
-          patientReference: "9090",
-          treatmentTemplateId: "tmpl_orthodontie",
-          startDate: DateTime.now().subtract(const Duration(days: 30)),
-          installments: [
-            PatientInstallment(
-              id: "pi1",
-              order: 1,
-              amount: 5000.0,
-              isObligatory: true,
-              description: 'Premier paiement - Pose des appareils',
-              isPaid: true,
-              paidDate: DateTime.now().subtract(const Duration(days: 30)),
-            ),
-            PatientInstallment(
-              id: "pi2",
-              order: 2,
-              amount: 3000.0,
-              isObligatory: true,
-              description: 'Deuxième paiement - Suivi 3 mois',
-            ),
-            PatientInstallment(
-              id: "pi3",
-              order: 3,
-              amount: 2000.0,
-              isObligatory: false,
-              description: 'Paiement optionnel - Suivi 6 mois',
-            ),
-          ],
-        ),
-      ],
-      paymentHistory: [
-        PaymentRecord(
-          id: "p1",
-          treatmentId: "pt1",
-          installmentId: "pi1",
-          amount: 5000.0,
-          date: DateTime.now().subtract(const Duration(days: 30)),
-        ),
-      ],
-    ),
-    PatientWithTreatments(
-      name: "Sarah El Mansouri",
-      reference: "8821",
-      phone: "+212 6 87 65 43 21",
-      treatments: [
-        PatientTreatment(
-          id: "pt2",
-          patientReference: "8821",
-          treatmentTemplateId: "tmpl_implant",
-          startDate: DateTime.now().subtract(const Duration(days: 15)),
-          installments: [
-            PatientInstallment(
-              id: "pi4",
-              order: 1,
-              amount: 4000.0,
-              isObligatory: true,
-              description: 'Pose de l\'implant',
-              isPaid: true,
-              paidDate: DateTime.now().subtract(const Duration(days: 15)),
-            ),
-            PatientInstallment(
-              id: "pi5",
-              order: 2,
-              amount: 2000.0,
-              isObligatory: true,
-              description: 'Pose de la couronne',
-            ),
-          ],
-        ),
-      ],
-      paymentHistory: [
-        PaymentRecord(
-          id: "p2",
-          treatmentId: "pt2",
-          installmentId: "pi4",
-          amount: 4000.0,
-          date: DateTime.now().subtract(const Duration(days: 15)),
-        ),
-      ],
-    ),
-  ];
+  static const String _baseEndpoint = '/treatments';
 
-  // Global treatment templates
-  static List<TreatmentTemplate> treatmentTemplates = [
-    TreatmentTemplate(
-      id: 'tmpl_orthodontie',
-      name: 'Orthodontie Complète',
-      description: 'Traitement orthodontique avec appareils dentaires complet',
-      totalPrice: 15000.0,
-      category: 'Orthodontie',
-      installmentTemplates: [
-        InstallmentTemplate(
-          order: 1,
-          amount: 5000.0,
-          isObligatory: true,
-          description: 'Premier paiement - Pose des appareils',
-        ),
-        InstallmentTemplate(
-          order: 2,
-          amount: 3000.0,
-          isObligatory: true,
-          description: 'Deuxième paiement - Suivi 3 mois',
-        ),
-        InstallmentTemplate(
-          order: 3,
-          amount: 2000.0,
-          isObligatory: false,
-          description: 'Paiement optionnel - Suivi 6 mois',
-        ),
-      ],
-    ),
-    TreatmentTemplate(
-      id: 'tmpl_implant',
-      name: 'Implant Dentaire',
-      description: 'Pose d\'implant avec couronne céramique',
-      totalPrice: 8000.0,
-      category: 'Chirurgie',
-      installmentTemplates: [
-        InstallmentTemplate(
-          order: 1,
-          amount: 4000.0,
-          isObligatory: true,
-          description: 'Pose de l\'implant',
-        ),
-        InstallmentTemplate(
-          order: 2,
-          amount: 2000.0,
-          isObligatory: true,
-          description: 'Pose de la couronne',
-        ),
-      ],
-    ),
-    TreatmentTemplate(
-      id: 'tmpl_blanchiment',
-      name: 'Blanchiment Dentaire',
-      description: 'Blanchiment dentaire professionnel complet',
-      totalPrice: 2500.0,
-      category: 'Esthétique',
-      installmentTemplates: [
-        InstallmentTemplate(
-          order: 1,
-          amount: 1500.0,
-          isObligatory: true,
-          description: 'Première séance',
-        ),
-        InstallmentTemplate(
-          order: 2,
-          amount: 1000.0,
-          isObligatory: true,
-          description: 'Séance de rappel',
-        ),
-      ],
-    ),
-    TreatmentTemplate(
-      id: 'tmpl_nettoyage',
-      name: 'Nettoyage Complet',
-      description: 'Détartrage et nettoyage dentaire professionnel',
-      totalPrice: 800.0,
-      category: 'Prévention',
-      installmentTemplates: [
-        InstallmentTemplate(
-          order: 1,
-          amount: 800.0,
-          isObligatory: true,
-          description: 'Paiement unique',
-        ),
-      ],
-    ),
-    TreatmentTemplate(
-      id: 'tmpl_couronne',
-      name: 'Couronne Céramique',
-      description: 'Pose de couronne céramique sur dent',
-      totalPrice: 3500.0,
-      category: 'Prothèse',
-      installmentTemplates: [
-        InstallmentTemplate(
-          order: 1,
-          amount: 2000.0,
-          isObligatory: true,
-          description: 'Préparation et empreinte',
-        ),
-        InstallmentTemplate(
-          order: 2,
-          amount: 1500.0,
-          isObligatory: true,
-          description: 'Pose de la couronne',
-        ),
-      ],
-    ),
-  ];
+  // =============================
+  // Treatment Templates Methods
+  // =============================
 
-  // Treatment template methods
-  static List<Treatment> getAvailableTreatmentTemplates() {
-    return treatmentTemplates.where((t) => t.isActive).map((template) {
-      return Treatment(
-        id: template.id,
-        name: template.name,
-        description: template.description,
-        totalPrice: template.totalPrice,
-        createdDate: DateTime.now(),
-        installments: template.installmentTemplates.map((installmentTemplate) {
-          return Installment(
-            id: '${template.id}_${installmentTemplate.order}',
-            order: installmentTemplate.order,
-            amount: installmentTemplate.amount,
-            isObligatory: installmentTemplate.isObligatory,
-          );
-        }).toList(),
-      );
-    }).toList();
-  }
-
-  static PatientWithTreatments? getPatientByReference(String reference) {
-    try {
-      return mockPatients.firstWhere((patient) => patient.reference == reference);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  static TreatmentTemplate? getTreatmentTemplate(String templateId) {
-    try {
-      return treatmentTemplates.firstWhere((template) => template.id == templateId);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  static List<TreatmentTemplate> getTreatmentTemplatesByCategory(String category) {
-    return treatmentTemplates.where((template) => 
-        template.category == category && template.isActive).toList();
-  }
-
-  static List<String> getTreatmentCategories() {
-    return treatmentTemplates
-        .where((template) => template.isActive)
-        .map((template) => template.category)
-        .toSet()
-        .toList();
-  }
-
-  // Create a new global treatment template
-  static String createTreatmentTemplate(Treatment treatment) {
-    final templateId = 'tmpl_${DateTime.now().millisecondsSinceEpoch}';
-    
-    final newTemplate = TreatmentTemplate(
-      id: templateId,
-      name: treatment.name,
-      description: treatment.description,
-      totalPrice: treatment.totalPrice,
-      category: 'Personnalisé',
-      installmentTemplates: treatment.installments.map((installment) {
-        return InstallmentTemplate(
-          order: installment.order,
-          amount: installment.amount,
-          isObligatory: installment.isObligatory,
-          description: 'Échéance ${installment.order}',
-        );
-      }).toList(),
-    );
-
-    // Add to global templates list
-    treatmentTemplates.add(newTemplate);
-    return templateId;
-  }
-
-  // Assign an existing treatment template to a patient (used by CreateTreatmentScreen)
-  static void addTreatmentToPatient(String patientReference, Treatment treatment) {
-    // First create the global template
-    final templateId = createTreatmentTemplate(treatment);
-    
-    // Then assign it to the patient
-    assignTreatmentToPatient(patientReference, templateId);
-  }
-
-  static void assignTreatmentToPatient(String patientReference, String treatmentTemplateId) {
-    final template = getTreatmentTemplate(treatmentTemplateId);
-    if (template == null) return;
-
-    final patientIndex = mockPatients.indexWhere((p) => p.reference == patientReference);
-    if (patientIndex == -1) return;
-
-    // Create patient treatment with installments from template
-    final treatmentId = DateTime.now().millisecondsSinceEpoch.toString();
-    final patientTreatment = PatientTreatment(
-      id: treatmentId,
-      patientReference: patientReference,
-      treatmentTemplateId: treatmentTemplateId,
-      startDate: DateTime.now(),
-      installments: template.installmentTemplates.map((installmentTemplate) {
-        return PatientInstallment(
-          id: '${treatmentId}_${installmentTemplate.order}',
-          order: installmentTemplate.order,
-          amount: installmentTemplate.amount,
-          isObligatory: installmentTemplate.isObligatory,
-          description: installmentTemplate.description,
-        );
-      }).toList(),
-    );
-
-    // Add to patient
-    final currentPatient = mockPatients[patientIndex];
-    mockPatients[patientIndex] = PatientWithTreatments(
-      name: currentPatient.name,
-      reference: currentPatient.reference,
-      phone: currentPatient.phone,
-      email: currentPatient.email,
-      treatments: [...currentPatient.treatments, patientTreatment],
-      paymentHistory: currentPatient.paymentHistory,
+  /// Get all treatment templates
+  static Future<ApiResponse<List<TreatmentTemplateDto>>> getTreatmentTemplates() async {
+    return ApiClient.get<List<TreatmentTemplateDto>>(
+      '$_baseEndpoint/templates',
+      fromJson: (data) => (data as List)
+          .map((e) => TreatmentTemplateDto.fromJson(e))
+          .toList(),
     );
   }
 
-  static void addPaymentToPatient(String patientReference, PaymentRecord payment) {
-    final patientIndex = mockPatients.indexWhere((p) => p.reference == patientReference);
-    if (patientIndex == -1) return;
+  /// Get active treatment templates only
+  static Future<ApiResponse<List<TreatmentTemplateDto>>> getActiveTreatmentTemplates() async {
+    return ApiClient.get<List<TreatmentTemplateDto>>(
+      '$_baseEndpoint/templates/active',
+      fromJson: (data) => (data as List)
+          .map((e) => TreatmentTemplateDto.fromJson(e))
+          .toList(),
+    );
+  }
 
-    final currentPatient = mockPatients[patientIndex];
-    
-    // Also update the installment as paid if it's an installment payment
-    List<PatientTreatment> updatedTreatments = currentPatient.treatments.map((treatment) {
-      if (treatment.id == payment.treatmentId) {
-        List<PatientInstallment> updatedInstallments = treatment.installments.map((installment) {
-          if (installment.id == payment.installmentId) {
-            return installment.copyWith(
-              isPaid: true,
-              paidDate: payment.date,
-              paymentId: payment.id,
-            );
-          }
-          return installment;
-        }).toList();
+  /// Get treatment template by ID
+  static Future<ApiResponse<TreatmentTemplateDto>> getTreatmentTemplate(int id) async {
+    return ApiClient.get<TreatmentTemplateDto>(
+      '$_baseEndpoint/templates/$id',
+      fromJson: (data) => TreatmentTemplateDto.fromJson(data),
+    );
+  }
+
+  /// Get treatment templates by category
+  static Future<ApiResponse<List<TreatmentTemplateDto>>> getTreatmentTemplatesByCategory(
+      String category) async {
+    return ApiClient.get<List<TreatmentTemplateDto>>(
+      '$_baseEndpoint/templates/category/$category',
+      fromJson: (data) => (data as List)
+          .map((e) => TreatmentTemplateDto.fromJson(e))
+          .toList(),
+    );
+  }
+
+  /// Create new treatment template
+  static Future<ApiResponse<TreatmentTemplateDto>> createTreatmentTemplate(
+      CreateTreatmentTemplateDto dto) async {
+    return ApiClient.post<TreatmentTemplateDto>(
+      '$_baseEndpoint/templates',
+      body: dto.toJson(),
+      fromJson: (data) => TreatmentTemplateDto.fromJson(data),
+    );
+  }
+
+  /// Update treatment template
+  static Future<ApiResponse<TreatmentTemplateDto>> updateTreatmentTemplate(
+      int id, UpdateTreatmentTemplateDto dto) async {
+    return ApiClient.put<TreatmentTemplateDto>(
+      '$_baseEndpoint/templates/$id',
+      body: dto.toJson(),
+      fromJson: (data) => TreatmentTemplateDto.fromJson(data),
+    );
+  }
+
+  /// Deactivate treatment template
+  static Future<ApiResponse<bool>> deactivateTreatmentTemplate(int id) async {
+    return ApiClient.patch<bool>(
+      '$_baseEndpoint/templates/$id/deactivate',
+      fromJson: (data) => data is bool ? data : (data == true || data == 'true'),
+    );
+  }
+
+  /// Delete treatment template (Admin only)
+  static Future<ApiResponse<bool>> deleteTreatmentTemplate(int id) async {
+    return ApiClient.delete<bool>(
+      '$_baseEndpoint/templates/$id',
+      fromJson: (data) => data is bool ? data : (data == true || data == 'true'),
+    );
+  }
+
+  /// Get all treatment categories
+  static Future<ApiResponse<List<String>>> getTreatmentCategories() async {
+    return ApiClient.get<List<String>>(
+      '$_baseEndpoint/categories',
+      fromJson: (data) => (data as List).map((e) => e.toString()).toList(),
+    );
+  }
+
+  /// Validate treatment template name uniqueness
+  static Future<ApiResponse<bool>> validateTemplateName(
+      String name, int? excludeId) async {
+    final queryParams = excludeId != null 
+        ? {'excludeId': excludeId.toString()}
+        : null;
         
-        return PatientTreatment(
-          id: treatment.id,
-          patientReference: treatment.patientReference,
-          treatmentTemplateId: treatment.treatmentTemplateId,
-          startDate: treatment.startDate,
-          installments: updatedInstallments,
-          status: treatment.status,
-        );
-      }
-      return treatment;
-    }).toList();
+    return ApiClient.get<bool>(
+      '$_baseEndpoint/templates/validate/name/$name',
+      queryParams: queryParams,
+      fromJson: (data) => data is bool ? data : (data == true || data == 'true'),
+    );
+  }
 
-    mockPatients[patientIndex] = PatientWithTreatments(
-      name: currentPatient.name,
-      reference: currentPatient.reference,
-      phone: currentPatient.phone,
-      email: currentPatient.email,
-      treatments: updatedTreatments,
-      paymentHistory: [...currentPatient.paymentHistory, payment],
+  // =============================
+  // Patient Treatments Methods
+  // =============================
+
+  /// Assign treatment to patient
+  static Future<ApiResponse<PatientTreatmentDto>> assignTreatmentToPatient(
+      AssignTreatmentRequest request) async {
+    return ApiClient.post<PatientTreatmentDto>(
+      '$_baseEndpoint/assign',
+      body: request.toJson(),
+      fromJson: (data) => PatientTreatmentDto.fromJson(data),
+    );
+  }
+
+  /// Get all treatments for a specific patient
+  static Future<ApiResponse<List<PatientTreatmentDto>>> getPatientTreatments(
+      int patientId) async {
+    return ApiClient.get<List<PatientTreatmentDto>>(
+      '$_baseEndpoint/patient/$patientId',
+      fromJson: (data) => (data as List)
+          .map((e) => PatientTreatmentDto.fromJson(e))
+          .toList(),
+    );
+  }
+
+  /// Get specific patient treatment by ID
+  static Future<ApiResponse<PatientTreatmentDto>> getPatientTreatment(int id) async {
+    return ApiClient.get<PatientTreatmentDto>(
+      '$_baseEndpoint/patient-treatment/$id',
+      fromJson: (data) => PatientTreatmentDto.fromJson(data),
+    );
+  }
+
+  /// Update patient treatment
+  static Future<ApiResponse<PatientTreatmentDto>> updatePatientTreatment(
+      int id, UpdatePatientTreatmentDto dto) async {
+    return ApiClient.put<PatientTreatmentDto>(
+      '$_baseEndpoint/patient-treatment/$id',
+      body: dto.toJson(),
+      fromJson: (data) => PatientTreatmentDto.fromJson(data),
+    );
+  }
+
+  /// Complete treatment (Admin/Doctor only)
+  static Future<ApiResponse<bool>> completeTreatment(int id) async {
+    return ApiClient.patch<bool>(
+      '$_baseEndpoint/patient-treatment/$id/complete',
+      fromJson: (data) => data is bool ? data : (data == true || data == 'true'),
+    );
+  }
+
+  /// Cancel treatment (Admin/Doctor only)
+  static Future<ApiResponse<bool>> cancelTreatment(
+      int id, CancelTreatmentRequest request) async {
+    return ApiClient.patch<bool>(
+      '$_baseEndpoint/patient-treatment/$id/cancel',
+      body: request.toJson(),
+      fromJson: (data) => data is bool ? data : (data == true || data == 'true'),
+    );
+  }
+}
+
+// =============================
+// Request DTOs
+// =============================
+
+class AssignTreatmentRequest {
+  final int patientId;
+  final int treatmentTemplateId;
+  final String? notes;
+
+  AssignTreatmentRequest({
+    required this.patientId,
+    required this.treatmentTemplateId,
+    this.notes,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'patientId': patientId,
+        'treatmentTemplateId': treatmentTemplateId,
+        'notes': notes,
+      };
+
+  factory AssignTreatmentRequest.fromJson(Map<String, dynamic> json) {
+    return AssignTreatmentRequest(
+      patientId: json['patientId'],
+      treatmentTemplateId: json['treatmentTemplateId'],
+      notes: json['notes'],
+    );
+  }
+}
+
+class CancelTreatmentRequest {
+  final String reason;
+
+  CancelTreatmentRequest({
+    required this.reason,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'reason': reason,
+      };
+
+  factory CancelTreatmentRequest.fromJson(Map<String, dynamic> json) {
+    return CancelTreatmentRequest(
+      reason: json['reason'] ?? '',
+    );
+  }
+}
+
+// =============================
+// Update DTO for Patient Treatment
+// =============================
+
+class UpdatePatientTreatmentDto {
+  final String? notes;
+  final DateTime? startDate;
+  final DateTime? completedDate;
+  final String? status;
+
+  UpdatePatientTreatmentDto({
+    this.notes,
+    this.startDate,
+    this.completedDate,
+    this.status,
+  });
+
+  Map<String, dynamic> toJson() {
+    final map = <String, dynamic>{};
+    
+    if (notes != null) map['notes'] = notes;
+    if (startDate != null) map['startDate'] = startDate!.toIso8601String();
+    if (completedDate != null) map['completedDate'] = completedDate!.toIso8601String();
+    if (status != null) map['status'] = status;
+    
+    return map;
+  }
+
+  factory UpdatePatientTreatmentDto.fromJson(Map<String, dynamic> json) {
+    return UpdatePatientTreatmentDto(
+      notes: json['notes'],
+      startDate: json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
+      completedDate: json['completedDate'] != null ? DateTime.parse(json['completedDate']) : null,
+      status: json['status'],
     );
   }
 }

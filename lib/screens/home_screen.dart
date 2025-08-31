@@ -1,3 +1,5 @@
+import 'package:denta_incomes/models/auth.dart';
+import 'package:denta_incomes/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import '../models/payment.dart';
 import '../models/patient.dart';
@@ -56,6 +58,7 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildUserProfileSection(context),
             // Top Stats Row
             Row(
               children: [
@@ -183,6 +186,159 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+
+Widget _buildUserProfileSection(BuildContext context) {
+  return FutureBuilder<UserDto?>(
+    future: AuthService.getCurrentUser(),
+    builder: (context, snapshot) {
+      final user = snapshot.data;
+      
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: const Color(0xFF4F46E5),
+              backgroundImage: user?.profileImagePath != null 
+                  ? NetworkImage(user!.profileImagePath!) 
+                  : null,
+              child: user?.profileImagePath == null
+                  ? Text(
+                      user?.fullName.isNotEmpty == true ? user!.fullName[0] : 'U',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user?.fullName ?? 'Utilisateur',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  Text(
+                    user?.email ?? '',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                  Text(
+                    user?.role ?? 'Dentiste',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF4F46E5),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                switch (value) {
+                  case 'security':
+                    Navigator.pushNamed(context, '/security-info');
+                    break;
+                  case 'change-password':
+                    Navigator.pushNamed(context, '/change-password');
+                    break;
+                  case 'logout':
+                    _handleLogout(context);
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'security',
+                  child: Row(
+                    children: [
+                      Icon(Icons.security, size: 18),
+                      SizedBox(width: 8),
+                      Text('Sécurité'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'change-password',
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock_outline, size: 18),
+                      SizedBox(width: 8),
+                      Text('Changer mot de passe'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout, size: 18, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Se déconnecter', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Future<void> _handleLogout(BuildContext context) async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Se déconnecter'),
+      content: const Text('Êtes-vous sûr de vouloir vous déconnecter?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Annuler'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Se déconnecter'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm == true) {
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    await AuthService.logout();
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+  }
+}
+
 
   Widget _buildCompactStatCard(
     String title,
