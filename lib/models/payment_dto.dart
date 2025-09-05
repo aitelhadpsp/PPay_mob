@@ -309,3 +309,238 @@ class PaymentReceiptDto {
         'processedBy': processedBy,
       };
 }
+
+
+
+class PaymentTrendDto {
+  DateTime month;
+  double totalAmount;
+  int paymentCount;
+  double averagePayment;
+
+  PaymentTrendDto({
+    required this.month,
+    required this.totalAmount,
+    required this.paymentCount,
+    required this.averagePayment,
+  });
+
+  factory PaymentTrendDto.fromJson(Map<String, dynamic> json) {
+    return PaymentTrendDto(
+      month: DateTime.parse(json['month']),
+      totalAmount: (json['totalAmount'] as num).toDouble(),
+      paymentCount: json['paymentCount'],
+      averagePayment: (json['averagePayment'] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'month': month.toIso8601String(),
+        'totalAmount': totalAmount,
+        'paymentCount': paymentCount,
+        'averagePayment': averagePayment,
+      };
+}
+
+class PaymentValidationResultDto {
+  bool isValid;
+  String? errorMessage;
+  double maxAllowedAmount;
+  bool requiresObligatoryPayments;
+  List<String> validationMessages;
+
+  PaymentValidationResultDto({
+    required this.isValid,
+    this.errorMessage,
+    required this.maxAllowedAmount,
+    required this.requiresObligatoryPayments,
+    this.validationMessages = const [],
+  });
+
+  factory PaymentValidationResultDto.fromJson(Map<String, dynamic> json) {
+    return PaymentValidationResultDto(
+      isValid: json['isValid'],
+      errorMessage: json['errorMessage'],
+      maxAllowedAmount: (json['maxAllowedAmount'] as num).toDouble(),
+      requiresObligatoryPayments: json['requiresObligatoryPayments'],
+      validationMessages: (json['validationMessages'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'isValid': isValid,
+        'errorMessage': errorMessage,
+        'maxAllowedAmount': maxAllowedAmount,
+        'requiresObligatoryPayments': requiresObligatoryPayments,
+        'validationMessages': validationMessages,
+      };
+}
+
+class OutstandingPaymentDto {
+  int patientId;
+  String patientName;
+  String patientReference;
+  int patientTreatmentId;
+  String treatmentName;
+  double outstandingAmount;
+  int unpaidInstallments;
+  DateTime? nextDueDate;
+  bool hasOverduePayments;
+
+  OutstandingPaymentDto({
+    required this.patientId,
+    required this.patientName,
+    required this.patientReference,
+    required this.patientTreatmentId,
+    required this.treatmentName,
+    required this.outstandingAmount,
+    required this.unpaidInstallments,
+    this.nextDueDate,
+    required this.hasOverduePayments,
+  });
+
+  factory OutstandingPaymentDto.fromJson(Map<String, dynamic> json) {
+    return OutstandingPaymentDto(
+      patientId: json['patientId'],
+      patientName: json['patientName'] ?? '',
+      patientReference: json['patientReference'] ?? '',
+      patientTreatmentId: json['patientTreatmentId'],
+      treatmentName: json['treatmentName'] ?? '',
+      outstandingAmount: (json['outstandingAmount'] as num).toDouble(),
+      unpaidInstallments: json['unpaidInstallments'],
+      nextDueDate: json['nextDueDate'] != null 
+          ? DateTime.parse(json['nextDueDate']) 
+          : null,
+      hasOverduePayments: json['hasOverduePayments'],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'patientId': patientId,
+        'patientName': patientName,
+        'patientReference': patientReference,
+        'patientTreatmentId': patientTreatmentId,
+        'treatmentName': treatmentName,
+        'outstandingAmount': outstandingAmount,
+        'unpaidInstallments': unpaidInstallments,
+        'nextDueDate': nextDueDate?.toIso8601String(),
+        'hasOverduePayments': hasOverduePayments,
+      };
+}
+
+class OverdueInstallmentDto {
+  int patientInstallmentId;
+  int patientId;
+  String patientName;
+  String patientReference;
+  String treatmentName;
+  String installmentDescription;
+  double amount;
+  DateTime dueDate;
+  int daysOverdue;
+  bool isObligatory;
+
+  OverdueInstallmentDto({
+    required this.patientInstallmentId,
+    required this.patientId,
+    required this.patientName,
+    required this.patientReference,
+    required this.treatmentName,
+    required this.installmentDescription,
+    required this.amount,
+    required this.dueDate,
+    required this.daysOverdue,
+    required this.isObligatory,
+  });
+
+  factory OverdueInstallmentDto.fromJson(Map<String, dynamic> json) {
+    return OverdueInstallmentDto(
+      patientInstallmentId: json['patientInstallmentId'],
+      patientId: json['patientId'],
+      patientName: json['patientName'] ?? '',
+      patientReference: json['patientReference'] ?? '',
+      treatmentName: json['treatmentName'] ?? '',
+      installmentDescription: json['installmentDescription'] ?? '',
+      amount: (json['amount'] as num).toDouble(),
+      dueDate: DateTime.parse(json['dueDate']),
+      daysOverdue: json['daysOverdue'],
+      isObligatory: json['isObligatory'],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'patientInstallmentId': patientInstallmentId,
+        'patientId': patientId,
+        'patientName': patientName,
+        'patientReference': patientReference,
+        'treatmentName': treatmentName,
+        'installmentDescription': installmentDescription,
+        'amount': amount,
+        'dueDate': dueDate.toIso8601String(),
+        'daysOverdue': daysOverdue,
+        'isObligatory': isObligatory,
+      };
+}
+
+class PaymentReminderDto {
+  int patientId;
+  String patientName;
+  String patientEmail;
+  String patientPhone;
+  int patientInstallmentId;
+  String installmentDescription;
+  double amount;
+  DateTime dueDate;
+  int daysUntilDue;
+  bool isOverdue;
+  DateTime? lastReminderSent;
+
+  PaymentReminderDto({
+    required this.patientId,
+    required this.patientName,
+    required this.patientEmail,
+    required this.patientPhone,
+    required this.patientInstallmentId,
+    required this.installmentDescription,
+    required this.amount,
+    required this.dueDate,
+    required this.daysUntilDue,
+    required this.isOverdue,
+    this.lastReminderSent,
+  });
+
+  factory PaymentReminderDto.fromJson(Map<String, dynamic> json) {
+    return PaymentReminderDto(
+      patientId: json['patientId'],
+      patientName: json['patientName'] ?? '',
+      patientEmail: json['patientEmail'] ?? '',
+      patientPhone: json['patientPhone'] ?? '',
+      patientInstallmentId: json['patientInstallmentId'],
+      installmentDescription: json['installmentDescription'] ?? '',
+      amount: (json['amount'] as num).toDouble(),
+      dueDate: DateTime.parse(json['dueDate']),
+      daysUntilDue: json['daysUntilDue'],
+      isOverdue: json['isOverdue'],
+      lastReminderSent: json['lastReminderSent'] != null 
+          ? DateTime.parse(json['lastReminderSent']) 
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'patientId': patientId,
+        'patientName': patientName,
+        'patientEmail': patientEmail,
+        'patientPhone': patientPhone,
+        'patientInstallmentId': patientInstallmentId,
+        'installmentDescription': installmentDescription,
+        'amount': amount,
+        'dueDate': dueDate.toIso8601String(),
+        'daysUntilDue': daysUntilDue,
+        'isOverdue': isOverdue,
+        'lastReminderSent': lastReminderSent?.toIso8601String(),
+      };
+}

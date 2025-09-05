@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
+import 'package:flutter/rendering.dart';
+import 'dart:ui' as ui;
+import 'dart:typed_data';
+import 'dart:convert';
 
 class SignatureBox extends StatefulWidget {
-  final Function(String) onSaved;
+  final Function(String) onSaved; // (path, base64)
 
   const SignatureBox({Key? key, required this.onSaved}) : super(key: key);
 
@@ -13,6 +16,8 @@ class SignatureBox extends StatefulWidget {
 class _SignatureBoxState extends State<SignatureBox> {
   List<Offset?> points = <Offset?>[];
   bool isSigned = false;
+  bool isSaving = false;
+  final GlobalKey _signatureKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -22,24 +27,32 @@ class _SignatureBoxState extends State<SignatureBox> {
       color: Colors.white,
       child: Stack(
         children: [
-          // Drawing area
-          GestureDetector(
-            onPanUpdate: (DragUpdateDetails details) {
-              setState(() {
-                RenderBox renderBox = context.findRenderObject() as RenderBox;
-                Offset localPosition = renderBox.globalToLocal(details.globalPosition);
-                points.add(localPosition);
-                if (!isSigned) {
-                  isSigned = true;
-                }
-              });
-            },
-            onPanEnd: (DragEndDetails details) {
-              points.add(null);
-            },
-            child: CustomPaint(
-              painter: SignaturePainter(points),
-              size: Size.infinite,
+          // Drawing area with RepaintBoundary for capturing
+          RepaintBoundary(
+            key: _signatureKey,
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: Colors.white,
+              child: GestureDetector(
+                onPanUpdate: (DragUpdateDetails details) {
+                  setState(() {
+                    RenderBox renderBox = context.findRenderObject() as RenderBox;
+                    Offset localPosition = renderBox.globalToLocal(details.globalPosition);
+                    points.add(localPosition);
+                    if (!isSigned) {
+                      isSigned = true;
+                    }
+                  });
+                },
+                onPanEnd: (DragEndDetails details) {
+                  points.add(null);
+                },
+                child: CustomPaint(
+                  painter: SignaturePainter(points),
+                  size: Size.infinite,
+                ),
+              ),
             ),
           ),
 
@@ -55,6 +68,17 @@ class _SignatureBoxState extends State<SignatureBox> {
               ),
             ),
 
+          // Loading overlay
+          if (isSaving)
+            Container(
+              color: Colors.black26,
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4F46E5)),
+                ),
+              ),
+            ),
+
           // Action buttons
           Positioned(
             bottom: 8,
@@ -63,7 +87,7 @@ class _SignatureBoxState extends State<SignatureBox> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Clear button
-                if (isSigned)
+                if (isSigned && !isSaving)
                   Container(
                     margin: const EdgeInsets.only(right: 8),
                     child: IconButton(
@@ -73,12 +97,13 @@ class _SignatureBoxState extends State<SignatureBox> {
                         backgroundColor: Colors.white,
                         shape: const CircleBorder(),
                         padding: const EdgeInsets.all(8),
+                        elevation: 2,
                       ),
                     ),
                   ),
 
                 // Save button
-                if (isSigned)
+                if (isSigned && !isSaving)
                   IconButton(
                     onPressed: _saveSignature,
                     icon: const Icon(Icons.check, color: Colors.green),
@@ -86,6 +111,7 @@ class _SignatureBoxState extends State<SignatureBox> {
                       backgroundColor: Colors.white,
                       shape: const CircleBorder(),
                       padding: const EdgeInsets.all(8),
+                      elevation: 2,
                     ),
                   ),
               ],
@@ -103,19 +129,78 @@ class _SignatureBoxState extends State<SignatureBox> {
     });
   }
 
-  void _saveSignature() {
-    // In a real app, you would save the signature to a file
-    // For now, we'll just simulate saving and return a mock path
-    final mockPath = '/path/to/signature_${DateTime.now().millisecondsSinceEpoch}.png';
-    widget.onSaved(mockPath);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Signature sauvegardée'),
-        backgroundColor: Color(0xFF10B981),
-        duration: Duration(seconds: 1),
-      ),
-    );
+  Future<void> _saveSignature() async {
+    if (!isSigned || isSaving) return;
+
+    setState(() {
+      isSaving = true;
+    });
+
+    try {
+      // Capture the signature as an image
+      RenderRepaintBoundary boundary = _signatureKey.currentContext!
+          .findRenderObject() as RenderRepaintBoundary;
+      
+      ui.Image image = await boundary.toImage(pixelRatio: 2.0);
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      
+      if (byteData != null) {
+        Uint8List pngBytes = byteData.buffer.asUint8List();
+        
+        // Convert to Base64
+        String base64String = base64Encode(pngBytes);
+        
+        
+        // Call the callback with both path and base64
+        widget.onSaved(base64String);
+        
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('Signature sauvegardée'),
+                ],
+              ),
+              backgroundColor: Color(0xFF10B981),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        throw Exception('Impossible de capturer la signature');
+      }
+    } catch (e) {
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Erreur lors de la sauvegarde: ${e.toString()}'),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSaving = false;
+        });
+      }
+    }
   }
 }
 
@@ -129,8 +214,10 @@ class SignaturePainter extends CustomPainter {
     Paint paint = Paint()
       ..color = const Color(0xFF1E293B)
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 2.0;
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke;
 
+    // Draw signature paths
     for (int i = 0; i < points.length - 1; i++) {
       if (points[i] != null && points[i + 1] != null) {
         canvas.drawLine(points[i]!, points[i + 1]!, paint);

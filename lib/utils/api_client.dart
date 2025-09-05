@@ -26,7 +26,7 @@ class NetworkException extends ApiException {
 
 // Unified API Client
 class ApiClient {
-  static const String baseUrl = 'https://dinc.maachaba.com/api';
+  static const String baseUrl =  'https://dinc.maachaba.com/api';
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userKey = 'user_data';

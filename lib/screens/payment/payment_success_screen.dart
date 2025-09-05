@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:denta_incomes/models/patient_dto.dart';
 import 'package:flutter/material.dart';
 import '../../models/patient.dart';
 
@@ -12,9 +13,7 @@ class PaymentSuccessScreen extends StatelessWidget {
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
     // Fallback to default data if no arguments passed
-    final Patient patient =
-        paymentData?['patient'] ??
-        Patient(name: "Abdelhak Ait elhad", reference: "9090");
+    final PatientDto patient =paymentData?['patient'] ;
     final double amount = paymentData?['amount'] ?? 1500.0;
     final String? signaturePath = paymentData?['signaturePath'];
     final DateTime date = paymentData?['date'] ?? DateTime.now();

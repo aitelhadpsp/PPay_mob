@@ -1,10 +1,8 @@
 import 'package:denta_incomes/models/enums.dart';
-import 'package:denta_incomes/models/patient.dart';
 import 'package:denta_incomes/models/patient_dto.dart';
-import 'package:denta_incomes/models/payment.dart';
-import 'package:denta_incomes/models/treatment.dart';
 import 'package:denta_incomes/models/treatment_dto.dart';
-import 'package:denta_incomes/services/treatment_service.dart';
+import 'package:denta_incomes/models/payment_dto.dart';
+import 'package:denta_incomes/services/payment_service.dart';
 import 'package:denta_incomes/widgets/signature_box.dart';
 import 'package:flutter/material.dart';
 
@@ -18,11 +16,13 @@ class TreatmentPaymentScreen extends StatefulWidget {
 class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
   bool hasSignature = false;
   String? signaturePath;
+  String? signatureBase64;
   PatientWithTreatmentsDto? patient;
   PatientTreatmentDto? treatment;
   PatientInstallmentDto? installment;
   double paymentAmount = 0.0;
   bool isCustomPayment = false;
+  bool isProcessing = false;
 
   @override
   void didChangeDependencies() {
@@ -38,9 +38,9 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
     isCustomPayment = paymentData['isCustomPayment'] ?? false;
   }
 
-  void _onSignatureSaved(String path) {
+  void _onSignatureSaved( String base64) {
     setState(() {
-      signaturePath = path;
+      signatureBase64 = base64;
       hasSignature = true;
     });
   }
@@ -106,7 +106,9 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
 
                         _buildSummaryRow('Patient', patient!.name),
                         const SizedBox(height: 12),
-                        _buildSummaryRow('Traitement', treatment!.id.toString()),
+                        _buildSummaryRow('Référence', patient!.reference),
+                        const SizedBox(height: 12),
+                        _buildSummaryRow('Traitement', treatment!.treatmentName),
                         const SizedBox(height: 12),
                         _buildSummaryRow(
                           'Type de Paiement',
@@ -317,7 +319,7 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: hasSignature ? _confirmPayment : null,
+                    onPressed: (hasSignature && !isProcessing) ? _confirmPayment : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4F46E5),
                       disabledBackgroundColor: const Color(0xFFE2E8F0),
@@ -326,15 +328,37 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text(
-                      hasSignature
-                          ? 'Confirmer le Paiement (${paymentAmount.toInt()} DH)'
-                          : 'Obtenir la signature du patient',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
+                    child: isProcessing
+                        ? const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Traitement en cours...',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            hasSignature
+                                ? 'Confirmer le Paiement (${paymentAmount.toInt()} DH)'
+                                : 'Obtenir la signature du patient',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -368,35 +392,124 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
     );
   }
 
-  void _confirmPayment() {
-    // Create payment record
-    final paymentId = DateTime.now().millisecondsSinceEpoch.toString();
-  /*   final paymentRecord = PaymentRecord(
-      id: paymentId,
-      treatmentId: treatment!.id.toString(),
-      installmentId:
-          installment?.id ?? 'custom_${DateTime.now().millisecondsSinceEpoch}',
+  Future<void> _confirmPayment() async {
+    if (isProcessing) return;
+
+    setState(() {
+      isProcessing = true;
+    });
+
+    try {
+      if (isCustomPayment) {
+        // Custom payment
+        await _processCustomPayment();
+      } else {
+        // Installment payment
+        await _processInstallmentPayment();
+      }
+    } catch (e) {
+      _showErrorMessage('Erreur lors du traitement du paiement: ${e.toString()}');
+    } finally {
+      setState(() {
+        isProcessing = false;
+      });
+    }
+  }
+
+  Future<void> _processInstallmentPayment() async {
+    if (installment == null) {
+      _showErrorMessage('Données d\'échéance manquantes');
+      return;
+    }
+
+    // First validate the installment payment
+    final validationResponse = await PaymentService.validateInstallmentPayment(installment!.id);
+    
+    if (!validationResponse.success) {
+      _showErrorMessage(validationResponse.message ?? 'Erreur de validation');
+      return;
+    }
+
+    if (!validationResponse.data!.isValid) {
+      _showErrorMessage(validationResponse.data!.errorMessage ?? 'Paiement invalide');
+      return;
+    }
+
+    // Create installment payment DTO
+    final paymentDto = CreateInstallmentPaymentDto(
+      patientId: patient!.id,
+      patientTreatmentId: treatment!.id,
+      paymentMethod: 'Cash', // You can make this configurable
+      signatureBase64: signatureBase64,
+      notes: 'Paiement échéance ${installment!.order}',
+    );
+
+    // Process the payment
+    final response = await PaymentService.payInstallment(installment!.id, paymentDto);
+    
+    if (response.success && response.data != null) {
+      _showSuccessAndNavigate(response.data!);
+    } else {
+      _showErrorMessage(response.message ?? 'Erreur lors du traitement du paiement');
+    }
+  }
+
+  Future<void> _processCustomPayment() async {
+    // Validate custom payment amount
+    final validationResponse = await PaymentService.validatePaymentAmount(
+      treatment!.id, 
+      paymentAmount
+    );
+    
+    if (!validationResponse.success) {
+      _showErrorMessage(validationResponse.message ?? 'Erreur de validation');
+      return;
+    }
+
+    if (!validationResponse.data!) {
+      _showErrorMessage('Montant de paiement invalide');
+      return;
+    }
+
+    // Create custom payment DTO
+    final paymentDto = CreateCustomPaymentDto(
+      patientId: patient!.id,
+      patientTreatmentId: treatment!.id,
       amount: paymentAmount,
-      date: DateTime.now(),
-      signature: signaturePath,
-      type: isCustomPayment ? PaymentType.partial : PaymentType.installment,
-    ); */
+      totalTreatmentCost: treatment!.totalPrice,
+      paymentMethod: 'Cash', // You can make this configurable
+      signatureBase64: signatureBase64,
+      notes: 'Paiement libre de ${paymentAmount.toInt()} DH',
+    );
 
-    // Add payment to patient
-    //TreatmentService.addPaymentToPatient(patient!.reference, paymentRecord);
+    // Process the payment
+    final response = await PaymentService.payCustomAmount(paymentDto);
+    
+    if (response.success && response.data != null) {
+      _showSuccessAndNavigate(response.data!);
+    } else {
+      _showErrorMessage(response.message ?? 'Erreur lors du traitement du paiement');
+    }
+  }
 
-    // Show success and navigate
+  void _showSuccessAndNavigate(PaymentRecordDto paymentRecord) {
+    // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             const Icon(Icons.check_circle, color: Colors.white),
             const SizedBox(width: 8),
-            Text('Paiement de ${paymentAmount.toInt()} DH enregistré!'),
+            Expanded(
+              child: Text(
+                'Paiement de ${paymentAmount.toInt()} DH enregistré avec succès!\nRéférence: ${paymentRecord.id}',
+              ),
+            ),
           ],
         ),
         backgroundColor: const Color(0xFF10B981),
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
       ),
     );
 
@@ -405,7 +518,24 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
       context,
       '/patient-details',
       (route) => route.settings.name == '/home',
-      arguments: patient!.reference,
+      arguments: patient!.id,
+    );
+  }
+
+  void _showErrorMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: const Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
     );
   }
 }
