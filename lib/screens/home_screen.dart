@@ -1,8 +1,8 @@
 import 'package:denta_incomes/models/auth.dart';
+import 'package:denta_incomes/models/dashboard_dto.dart';
 import 'package:denta_incomes/services/auth_service.dart';
+import 'package:denta_incomes/services/dashboard_service.dart';
 import 'package:flutter/material.dart';
-import '../models/payment.dart';
-import '../models/patient.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -13,39 +13,67 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  bool _isLoading = true;
+  QuickStatsDto? _quickStats;
+  List<DailyRevenueDto> _recentRevenue = [];
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // Load quick stats and recent revenue data
+      final quickStatsResponse = await DashboardService.getQuickStats();
+      final recentRevenueResponse = await DashboardService.getLast30DaysRevenue();
+
+      if (quickStatsResponse.success && quickStatsResponse.data != null) {
+        setState(() {
+          _quickStats = quickStatsResponse.data;
+        });
+      } else {
+        setState(() {
+          _errorMessage = quickStatsResponse.message ?? 'Failed to load dashboard data';
+        });
+      }
+
+      if (recentRevenueResponse.success && recentRevenueResponse.data != null) {
+        setState(() {
+          _recentRevenue = recentRevenueResponse.data!.take(5).toList();
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error loading dashboard: ${e.toString()}';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final todayPayments = [
-      Payment(
-        patient: Patient(name: "Abdelhak Ait elhad", reference: "9090"),
-        amount: 1500.0,
-        date: DateTime.now().subtract(const Duration(hours: 2)),
-      ),
-      Payment(
-        patient: Patient(name: "Sarah El Mansouri", reference: "8821"),
-        amount: 800.0,
-        date: DateTime.now().subtract(const Duration(hours: 4)),
-      ),
-      Payment(
-        patient: Patient(name: "Mohamed Benali", reference: "7755"),
-        amount: 2200.0,
-        date: DateTime.now().subtract(const Duration(hours: 6)),
-      ),
-    ];
-
-    final totalToday = todayPayments.fold(
-      0.0,
-      (sum, payment) => sum + payment.amount,
-    );
-
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: const Text('Mes Projets'),
+        title: const Text('Dashboard'),
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadDashboardData,
+          ),
           Container(
             margin: const EdgeInsets.only(right: 16),
             child: CircleAvatar(
@@ -60,194 +88,429 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildUserProfileSection(context),
-            
-            const SizedBox(height: 16),
-            
-            // Top Stats Row
-            Row(
-              children: [
-                Expanded(
-                  child: _buildCompactStatCard(
-                    'Recette Jour',
-                    '${totalToday.toInt()} DH',
-                    const Color(0xFF10B981),
-                    '86% Done',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildCompactStatCard(
-                    'Patients',
-                    '${todayPayments.length}',
-                    const Color(0xFF4F46E5),
-                    'En cours',
-                  ),
-                ),
-              ],
-            ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? _buildErrorWidget()
+              : RefreshIndicator(
+                  onRefresh: _loadDashboardData,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildUserProfileSection(context),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Top Stats Row
+                        _buildStatsRow(),
 
-            const SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-            // Progress Section
-            const Text(
-              'Mes Progrès',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1E293B),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            _buildProgressSection(todayPayments.length, totalToday),
-
-            const SizedBox(height: 20),
-
-            // Quick Actions
-            Row(
-              children: [
-                const Text(
-                  'Actions Rapides',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () {},
-                  icon: const Icon(Icons.more_vert, size: 20),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // Actions Grid
-            Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildActionButton(
-                        'Nouveau\nEncaissement',
-                        Icons.add_circle_outline,
-                        const Color(0xFF4F46E5),
-                        () =>
-                            Navigator.pushNamed(context, '/patient-selection'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildActionButton(
-                        'Créer\nPatient',
-                        Icons.person_add_outlined,
-                        const Color(0xFF8B5CF6),
-                        () => Navigator.pushNamed(context, '/create-user'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildActionButton(
-                        'Gérer\nTraitements',
-                        Icons.medical_services_outlined,
-                        const Color(0xFFEF4444),
-                        () => Navigator.pushNamed(
-                          context,
-                          '/treatment-management',
+                        // Progress Section
+                        const Text(
+                          'Aperçu Rapide',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1E293B),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 12),
+
+                        _buildProgressSection(),
+
+                        const SizedBox(height: 20),
+
+                        // Quick Actions
+                        Row(
+                          children: [
+                            const Text(
+                              'Actions Rapides',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              onPressed: () {},
+                              icon: const Icon(Icons.more_vert, size: 20),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Actions Grid
+                        _buildActionsGrid(),
+
+                        const SizedBox(height: 20),
+
+                        // Recent Activity section
+                        _buildRecentActivitySection(),
+
+                        // Add bottom padding to account for bottom navigation
+                        const SizedBox(height: 80),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildActionButton(
-                        'Recettes\nJour',
-                        Icons.bar_chart,
-                        const Color(0xFF10B981),
-                        () => Navigator.pushNamed(context, '/daily-receipts'),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ],
+    );
+  }
+
+  Widget _buildErrorWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Erreur de chargement',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
             ),
-
-            const SizedBox(height: 20),
-
-            // Team Members section
-            _buildTeamSection(todayPayments),
-
-            // Add bottom padding to account for bottom navigation
-            const SizedBox(height: 80),
-          ],
-        ),
-      ),
-  /*     bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF4F46E5),
-        unselectedItemColor: const Color(0xFF94A3B8),
-        elevation: 8,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          _handleNavigation(context, index);
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Accueil',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.task_outlined),
-            label: 'Tâches',
+          const SizedBox(height: 8),
+          Text(
+            _errorMessage ?? 'Une erreur inattendue s\'est produite',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[500],
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_add_outlined),
-            label: 'Patients',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today_outlined),
-            label: 'Calendrier',
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _loadDashboardData,
+            child: const Text('Réessayer'),
           ),
         ],
       ),
-    */ );
+    );
   }
 
-  void _handleNavigation(BuildContext context, int index) {
-    switch (index) {
-      case 0:
-        // Already on home - do nothing
-        break;
-      case 1:
-        Navigator.pushNamed(context, '/daily-receipts');
-        break;
-      case 2:
-        Navigator.pushNamed(context, '/patient-selection');
-        break;
-      case 3:
-        // Calendar functionality - placeholder
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Calendrier bientôt disponible'),
-            backgroundColor: Color(0xFF4F46E5),
+  Widget _buildStatsRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildCompactStatCard(
+            'Recette Jour',
+            '${_quickStats?.todayRevenue.toInt() ?? 0} DH',
+            const Color(0xFF10B981),
+            'Aujourd\'hui',
           ),
-        );
-        break;
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildCompactStatCard(
+            'Patients',
+            '${_quickStats?.todayPatients ?? 0}',
+            const Color(0xFF4F46E5),
+            'Aujourd\'hui',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProgressSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ce mois',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_quickStats?.thisMonthRevenue.toInt() ?? 0} DH',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF10B981),
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Nouveaux patients',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_quickStats?.thisMonthNewPatients ?? 0}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF4F46E5),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildQuickStat(
+                'Paiements en attente',
+                '${_quickStats?.pendingPayments ?? 0}',
+                const Color(0xFFF59E0B),
+              ),
+              const SizedBox(width: 16),
+              _buildQuickStat(
+                'Paiements en retard',
+                '${_quickStats?.overduePayments ?? 0}',
+                const Color(0xFFEF4444),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickStat(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionsGrid() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                'Nouveau\nEncaissement',
+                Icons.add_circle_outline,
+                const Color(0xFF4F46E5),
+                () => Navigator.pushNamed(context, '/patient-selection'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildActionButton(
+                'Créer\nPatient',
+                Icons.person_add_outlined,
+                const Color(0xFF8B5CF6),
+                () => Navigator.pushNamed(context, '/create-user'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                'Gérer\nTraitements',
+                Icons.medical_services_outlined,
+                const Color(0xFFEF4444),
+                () => Navigator.pushNamed(context, '/treatment-management'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildActionButton(
+                'Recettes\nJour',
+                Icons.bar_chart,
+                const Color(0xFF10B981),
+                () => Navigator.pushNamed(context, '/daily-receipts'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecentActivitySection() {
+    if (_recentRevenue.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Center(
+          child: Text(
+            'Aucune activité récente',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF64748B),
+            ),
+          ),
+        ),
+      );
     }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Activité Récente',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pushNamed(context, '/daily-receipts'),
+                child: const Text(
+                  'Voir tout',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...(_recentRevenue.take(3).map((revenue) => _buildRevenueItem(revenue))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRevenueItem(DailyRevenueDto revenue) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.attach_money,
+              color: Color(0xFF10B981),
+              size: 16,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _formatDate(revenue.date),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                Text(
+                  '${revenue.paymentCount} paiements',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${revenue.revenue.toInt()} DH',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF10B981),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildUserProfileSection(BuildContext context) {
@@ -302,7 +565,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Text(
-                      user?.role ?? 'Dentiste',
+                      user?.roleDisplay ?? 'Dentiste',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF4F46E5),
@@ -316,9 +579,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.more_vert),
                 onSelected: (value) {
                   switch (value) {
-                    case 'security':
-                      Navigator.pushNamed(context, '/security-info');
-                      break;
                     case 'change-password':
                       Navigator.pushNamed(context, '/change-password');
                       break;
@@ -328,16 +588,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'security',
-                    child: Row(
-                      children: [
-                        Icon(Icons.security, size: 18),
-                        SizedBox(width: 8),
-                        Text('Sécurité'),
-                      ],
-                    ),
-                  ),
                   const PopupMenuItem(
                     value: 'change-password',
                     child: Row(
@@ -466,63 +716,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildProgressSection(int patientCount, double total) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '$patientCount Encaissements',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1E293B),
-                ),
-              ),
-              Text(
-                '${total.toInt()} DH',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF10B981),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Text(
-                'Collectif',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-              const Spacer(),
-              const Text(
-                '17',
-                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildActionButton(
     String title,
     IconData icon,
@@ -564,82 +757,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTeamSection(List<Payment> payments) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Derniers Patients',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1E293B),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Espace Collaboratif',
-            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              ...payments
-                  .take(3)
-                  .map(
-                    (payment) => Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      child: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: const Color(0xFF4F46E5),
-                        child: Text(
-                          payment.patient.name[0],
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-              if (payments.length > 3)
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${payments.length - 3}+',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
+  String _formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year;
+    return '$day/$month/$year';
   }
 }
