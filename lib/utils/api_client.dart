@@ -26,7 +26,7 @@ class NetworkException extends ApiException {
 
 // Unified API Client
 class ApiClient {
-  static const String baseUrl =  'https://dinc.maachaba.com/api';
+  static const String baseUrl = 'https://dinc.maachaba.com/api';
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userKey = 'user_data';
@@ -34,6 +34,9 @@ class ApiClient {
   static const Duration _timeout = Duration(seconds: 30);
   static bool _isRefreshing = false;
   static final List<Function()> _refreshCallbacks = [];
+
+  // Callback for handling logout/navigation to login
+  static Function()? onAuthenticationFailed;
 
   // Generic GET request
   static Future<ApiResponse<T>> get<T>(
@@ -132,6 +135,15 @@ class ApiClient {
     bool isRetry = false,
   }) async {
     try {
+      // Check if token is expired before making the request
+      if (requiresAuth && !isRetry) {
+        final tokenValid = await _ensureValidToken();
+        if (!tokenValid) {
+          await _handleAuthenticationFailure();
+          return _createErrorResponse<T>('Authentication failed', 401);
+        }
+      }
+
       // Build URI
       final uri = Uri.parse('$baseUrl$endpoint').replace(queryParameters: queryParams);
 
@@ -181,6 +193,53 @@ class ApiClient {
     }
   }
 
+  // Check if JWT token is expired and refresh if needed
+  static Future<bool> _ensureValidToken() async {
+    final token = await getAccessToken();
+    
+    if (token == null || token.isEmpty) {
+      return false;
+    }
+
+    // Check if token is expired
+    if (_isTokenExpired(token)) {
+      return await _refreshTokenIfNeeded();
+    }
+
+    return true;
+  }
+
+  // Check if JWT token is expired
+  static bool _isTokenExpired(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+
+      // Decode the payload (second part)
+      final payload = parts[1];
+      // Add padding if needed
+      final normalizedPayload = base64.normalize(payload);
+      final decoded = utf8.decode(base64.decode(normalizedPayload));
+      final payloadMap = jsonDecode(decoded) as Map<String, dynamic>;
+
+      // Check expiration time
+      if (payloadMap.containsKey('exp')) {
+        final exp = payloadMap['exp'] as int;
+        final expirationTime = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+        final now = DateTime.now();
+        
+        // Add buffer time (e.g., 5 minutes) before actual expiration
+        final bufferTime = Duration(minutes: 5);
+        return now.isAfter(expirationTime.subtract(bufferTime));
+      }
+      
+      return false;
+    } catch (e) {
+      // If we can't parse the token, consider it expired
+      return true;
+    }
+  }
+
   // Build request headers
   static Future<Map<String, String>> _buildHeaders(bool requiresAuth) async {
     final headers = <String, String>{
@@ -225,6 +284,8 @@ class ApiClient {
             return await retryRequest();
           }
         }
+        // If retry failed or this is already a retry, handle auth failure
+        await _handleAuthenticationFailure();
         return _parseErrorResponse<T>(response, 'Unauthorized');
 
       case 403:
@@ -250,6 +311,16 @@ class ApiClient {
 
       default:
         return _parseErrorResponse<T>(response, 'Request failed');
+    }
+  }
+
+  // Handle authentication failure
+  static Future<void> _handleAuthenticationFailure() async {
+    await _clearTokens();
+    
+    // Call the callback to handle navigation to login
+    if (onAuthenticationFailed != null) {
+      onAuthenticationFailed!();
     }
   }
 
@@ -412,7 +483,7 @@ class ApiClient {
     try {
       final refreshToken = await getRefreshToken();
       if (refreshToken == null || refreshToken.isEmpty) {
-        await _clearTokens();
+        await _handleAuthenticationFailure();
         return false;
       }
 
@@ -437,10 +508,11 @@ class ApiClient {
         }
       }
 
-      await _clearTokens();
+      // If refresh failed, handle authentication failure
+      await _handleAuthenticationFailure();
       return false;
     } catch (e) {
-      await _clearTokens();
+      await _handleAuthenticationFailure();
       return false;
     } finally {
       _isRefreshing = false;
@@ -488,7 +560,10 @@ class ApiClient {
 
   static Future<bool> isLoggedIn() async {
     final token = await getAccessToken();
-    return token != null && token.isNotEmpty;
+    if (token == null || token.isEmpty) return false;
+    
+    // Check if token is not expired
+    return !_isTokenExpired(token);
   }
 
   // ------------------- Specialized auth -------------------

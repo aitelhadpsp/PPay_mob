@@ -586,45 +586,105 @@ class DashboardDto {
         'treatmentAnalytics': treatmentAnalytics.toJson(),
       };
 }
-
 class DailyStatsDto {
   final DateTime date;
-  final double revenue;
-  final int patients;
-  final int appointments;
-  final int payments;
-  final double averagePayment;
+  final double totalRevenue;
+  final int paymentCount;
+  final int patientCount;
+  final int appointmentCount;
+  final double targetRevenue;
+  final double revenueProgress;
+
+  // Computed properties for convenience
+  double get averagePayment => paymentCount > 0 ? totalRevenue / paymentCount : 0.0;
+  
+  // Backward compatibility getters (if needed elsewhere in your code)
+  double get revenue => totalRevenue;
+  int get payments => paymentCount;
+  int get patients => patientCount;
+  int get appointments => appointmentCount;
 
   DailyStatsDto({
     required this.date,
-    required this.revenue,
-    required this.patients,
-    required this.appointments,
-    required this.payments,
-    required this.averagePayment,
+    required this.totalRevenue,
+    required this.paymentCount,
+    required this.patientCount,
+    required this.appointmentCount,
+    required this.targetRevenue,
+    required this.revenueProgress,
   });
 
   factory DailyStatsDto.fromJson(Map<String, dynamic> json) {
     return DailyStatsDto(
       date: DateTime.parse(json['date']),
-      revenue: (json['revenue'] ?? 0).toDouble(),
-      patients: json['patients'] ?? 0,
-      appointments: json['appointments'] ?? 0,
-      payments: json['payments'] ?? 0,
-      averagePayment: (json['averagePayment'] ?? 0).toDouble(),
+      totalRevenue: (json['totalRevenue'] ?? 0).toDouble(),
+      paymentCount: json['paymentCount'] ?? 0,
+      patientCount: json['patientCount'] ?? 0,
+      appointmentCount: json['appointmentCount'] ?? 0,
+      targetRevenue: (json['targetRevenue'] ?? 0).toDouble(),
+      revenueProgress: (json['revenueProgress'] ?? 0).toDouble(),
     );
   }
 
   Map<String, dynamic> toJson() => {
         'date': date.toIso8601String(),
-        'revenue': revenue,
-        'patients': patients,
-        'appointments': appointments,
-        'payments': payments,
-        'averagePayment': averagePayment,
+        'totalRevenue': totalRevenue,
+        'paymentCount': paymentCount,
+        'patientCount': patientCount,
+        'appointmentCount': appointmentCount,
+        'targetRevenue': targetRevenue,
+        'revenueProgress': revenueProgress,
       };
-}
 
+  @override
+  String toString() {
+    return 'DailyStatsDto{date: $date, totalRevenue: $totalRevenue, paymentCount: $paymentCount, patientCount: $patientCount, appointmentCount: $appointmentCount, targetRevenue: $targetRevenue, revenueProgress: $revenueProgress}';
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DailyStatsDto &&
+          runtimeType == other.runtimeType &&
+          date == other.date &&
+          totalRevenue == other.totalRevenue &&
+          paymentCount == other.paymentCount &&
+          patientCount == other.patientCount &&
+          appointmentCount == other.appointmentCount &&
+          targetRevenue == other.targetRevenue &&
+          revenueProgress == other.revenueProgress;
+
+  @override
+  int get hashCode =>
+      date.hashCode ^
+      totalRevenue.hashCode ^
+      paymentCount.hashCode ^
+      patientCount.hashCode ^
+      appointmentCount.hashCode ^
+      targetRevenue.hashCode ^
+      revenueProgress.hashCode;
+
+  // Helper method to create a copy with updated values
+  DailyStatsDto copyWith({
+    DateTime? date,
+    double? totalRevenue,
+    int? paymentCount,
+    int? patientCount,
+    int? appointmentCount,
+    double? targetRevenue,
+    double? revenueProgress,
+  }) {
+    return DailyStatsDto(
+      date: date ?? this.date,
+      totalRevenue: totalRevenue ?? this.totalRevenue,
+      paymentCount: paymentCount ?? this.paymentCount,
+      patientCount: patientCount ?? this.patientCount,
+      appointmentCount: appointmentCount ?? this.appointmentCount,
+      targetRevenue: targetRevenue ?? this.targetRevenue,
+      revenueProgress: revenueProgress ?? this.revenueProgress,
+    );
+  }
+}
 class MonthlyStatsDto {
   final int year;
   final int month;

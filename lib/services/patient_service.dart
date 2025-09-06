@@ -6,14 +6,73 @@ class PatientService {
   static const String _baseEndpoint = '/patients';
 
   static Future<ApiResponse<PaginatedResponse<PatientDto>>> getPatients({
-    Map<String, String>? queryParams,
+    String? searchTerm ="",
+    int page = 1,
+    int pageSize = 20,
+    String? sortBy,
+    bool sortDescending = false,
+    Map<String, String>? filters,
   }) async {
+   final queryParams = <String, String>{
+      'page': page.toString(),
+      'pageSize': pageSize.toString(),
+      'sortDescending': sortDescending.toString(),
+    };
+
+      queryParams['searchTerm'] = searchTerm??" ";
+
+    if (sortBy != null && sortBy.isNotEmpty) {
+      queryParams['sortBy'] = sortBy;
+    }
+
+    if (filters != null) {
+      filters.forEach((key, value) {
+        queryParams['filters[$key]'] = value;
+      });
+    }
     return ApiClient.get<PaginatedResponse<PatientDto>>(
       _baseEndpoint,
       queryParams: queryParams,
       fromJson: (data) => PaginatedResponse<PatientDto>.fromJson(
         data,
         (json) => PatientDto.fromJson(json),
+      ),
+    );
+  }
+
+  // New method for paginated patient search
+  static Future<ApiResponse<PaginatedResponse<PatientSummaryDto>>> searchPatientsWithPagination({
+    String? searchTerm ="",
+    int page = 1,
+    int pageSize = 20,
+    String? sortBy,
+    bool sortDescending = false,
+    Map<String, String>? filters,
+  }) async {
+    final queryParams = <String, String>{
+      'page': page.toString(),
+      'pageSize': pageSize.toString(),
+      'sortDescending': sortDescending.toString(),
+    };
+
+      queryParams['searchTerm'] = searchTerm??" ";
+
+    if (sortBy != null && sortBy.isNotEmpty) {
+      queryParams['sortBy'] = sortBy;
+    }
+
+    if (filters != null) {
+      filters.forEach((key, value) {
+        queryParams['filters[$key]'] = value;
+      });
+    }
+
+    return ApiClient.get<PaginatedResponse<PatientSummaryDto>>(
+      '$_baseEndpoint/search',
+      queryParams: queryParams,
+      fromJson: (data) => PaginatedResponse<PatientSummaryDto>.fromJson(
+        data,
+        (json) => PatientSummaryDto.fromJson(json),
       ),
     );
   }

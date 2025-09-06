@@ -23,15 +23,18 @@ class _DailyReceiptsScreenState extends State<DailyReceiptsScreen> {
   }
 
   Future<void> _loadDailyData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    // Don't show full loading state when just changing dates
+    if (_dailyStats == null) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       // Load daily stats for selected date
       final dailyStatsResponse = await DashboardService.getDailyStats(
-        date: _selectedDate,
+        date: _selectedDate.copyWith(hour: 0),
       );
 
       // Load this week's revenue for context
@@ -40,6 +43,7 @@ class _DailyReceiptsScreenState extends State<DailyReceiptsScreen> {
       if (dailyStatsResponse.success && dailyStatsResponse.data != null) {
         setState(() {
           _dailyStats = dailyStatsResponse.data;
+          _errorMessage = null;
         });
       } else {
         setState(() {
@@ -92,40 +96,39 @@ class _DailyReceiptsScreenState extends State<DailyReceiptsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
-        title: const Text('Recettes'),
+        title: const Text('Recettes Journalières'),
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: _selectDate,
-          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadDailyData,
           ),
         ],
       ),
-      body: _isLoading
+      body: _isLoading && _dailyStats == null
           ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
+          : _errorMessage != null && _dailyStats == null
               ? _buildErrorWidget()
               : RefreshIndicator(
                   onRefresh: _loadDailyData,
-                  child: Column(
-                    children: [
-                      // Header with date and total
-                      _buildHeader(),
-                      
-                      // Daily stats cards
-                      _buildStatsCards(),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      children: [
+                        // Persistent Header with date selection
+                        _buildPersistentHeader(),
+                        
+                        const SizedBox(height: 16),
 
-                      // Weekly overview
-                      if (_weekRevenue.isNotEmpty) _buildWeeklyOverview(),
+                        // Main content area
+                        if (_dailyStats != null) _buildMainContent(),
+                        
+                        if (_weekRevenue.isNotEmpty) _buildWeeklyChart(),
 
-                      // Revenue breakdown
-                      Expanded(child: _buildRevenueBreakdown()),
-                    ],
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
                 ),
     );
@@ -133,105 +136,175 @@ class _DailyReceiptsScreenState extends State<DailyReceiptsScreen> {
 
   Widget _buildErrorWidget() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Erreur de chargement',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[600],
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.error_outline,
+                size: 48,
+                color: const Color(0xFFEF4444),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _errorMessage ?? 'Une erreur inattendue s\'est produite',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
+            const SizedBox(height: 16),
+            Text(
+              'Erreur de chargement',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1E293B),
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _loadDailyData,
-            child: const Text('Réessayer'),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage ?? 'Une erreur inattendue s\'est produite',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadDailyData,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Réessayer'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4F46E5),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildPersistentHeader() {
     final isToday = _isToday(_selectedDate);
     
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.all(20),
+      child: Column(
         children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: _selectDate,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        _formatDate(_selectedDate),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1E293B),
+          // Date selector row
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: _selectDate,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          size: 20,
+                          color: const Color(0xFF4F46E5),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(
-                        Icons.keyboard_arrow_down,
-                        size: 20,
-                        color: Color(0xFF64748B),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    isToday 
-                        ? 'Aujourd\'hui' 
-                        : _formatDateLong(_selectedDate),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _formatDate(_selectedDate),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                            Text(
+                              isToday ? 'Aujourd\'hui' : _formatDateLong(_selectedDate),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        Icon(
+                          Icons.edit_calendar,
+                          size: 18,
+                          color: Colors.grey[400],
+                        ),
+                      ],
                     ),
                   ),
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Revenue highlight
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF10B981),
+                  const Color(0xFF059669),
                 ],
               ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 6,
-            ),
-            decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF10B981).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: Text(
-              '${_dailyStats?.revenue.toInt() ?? 0} DH',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF10B981),
-              ),
+            child: Column(
+              children: [
+                Text(
+                  'Recette du jour',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.9),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${_dailyStats?.revenue.toInt() ?? 0} DH',
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                if (_dailyStats?.payments != null && _dailyStats!.payments > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      '${_dailyStats!.payments} paiement${_dailyStats!.payments > 1 ? 's' : ''}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -239,38 +312,65 @@ class _DailyReceiptsScreenState extends State<DailyReceiptsScreen> {
     );
   }
 
-  Widget _buildStatsCards() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-      child: Row(
+  Widget _buildMainContent() {
+    final stats = _dailyStats!;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
         children: [
-          Expanded(
-            child: _buildStatCard(
-              'Paiements',
-              '${_dailyStats?.payments ?? 0}',
-              Icons.receipt_long,
-              const Color(0xFF4F46E5),
-            ),
+          // Stats grid
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Patients',
+                  '${stats.patients}',
+                  Icons.people,
+                  const Color(0xFF8B5CF6),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'Rendez-vous',
+                  '${stats.appointments}',
+                  Icons.event,
+                  const Color(0xFF06B6D4),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              'Patients',
-              '${_dailyStats?.patients ?? 0}',
-              Icons.people,
-              const Color(0xFF8B5CF6),
-            ),
+          
+          const SizedBox(height: 12),
+          
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Paiements',
+                  '${stats.payments}',
+                  Icons.receipt_long,
+                  const Color(0xFF4F46E5),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'Paiement moyen',
+                  '${stats.averagePayment.toInt()} DH',
+                  Icons.trending_up,
+                  const Color(0xFFF59E0B),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              'Rendez-vous',
-              '${_dailyStats?.appointments ?? 0}',
-              Icons.event,
-              const Color(0xFF06B6D4),
-            ),
-          ),
+          
+          const SizedBox(height: 20),
+          
+          // Insights card
+          if (stats.revenue > 0 || stats.payments > 0)
+            _buildInsightsCard(stats),
         ],
       ),
     );
@@ -278,29 +378,49 @@ class _DailyReceiptsScreenState extends State<DailyReceiptsScreen> {
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.2)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 16),
+              ),
+              const Spacer(),
+            ],
+          ),
+          const SizedBox(height: 12),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 16,
+            style: const TextStyle(
+              fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: color,
+              color: Color(0xFF1E293B),
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             title,
             style: const TextStyle(
-              fontSize: 10,
+              fontSize: 12,
               color: Color(0xFF64748B),
               fontWeight: FontWeight.w500,
             ),
@@ -310,28 +430,125 @@ class _DailyReceiptsScreenState extends State<DailyReceiptsScreen> {
     );
   }
 
-  Widget _buildWeeklyOverview() {
+  Widget _buildInsightsCard(DailyStatsDto stats) {
     return Container(
-      margin: const EdgeInsets.all(16),
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.insights,
+                color: const Color(0xFF4F46E5),
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Analyse du jour',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          if (stats.revenue > 0) ...[
+            _buildInsightRow(
+              'Performance financière',
+              _getPerformanceInsight(stats),
+              _getPerformanceColor(stats),
+            ),
+          ],
+          
+          if (stats.payments > 0) ...[
+            const SizedBox(height: 8),
+            _buildInsightRow(
+              'Activité',
+              '${stats.payments} transaction${stats.payments > 1 ? 's' : ''} traitée${stats.payments > 1 ? 's' : ''}',
+              const Color(0xFF10B981),
+            ),
+          ],
+          
+          if (stats.patients > 0) ...[
+            const SizedBox(height: 8),
+            _buildInsightRow(
+              'Patients vus',
+              '${stats.patients} patient${stats.patients > 1 ? 's' : ''} reçu${stats.patients > 1 ? 's' : ''}',
+              const Color(0xFF8B5CF6),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightRow(String label, String value, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: const TextStyle(
+            fontSize: 13,
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeeklyChart() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Aperçu de la semaine',
+            'Tendance hebdomadaire',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Color(0xFF1E293B),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           SizedBox(
-            height: 60,
+            height: 80,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: _weekRevenue.length,
@@ -339,6 +556,8 @@ class _DailyReceiptsScreenState extends State<DailyReceiptsScreen> {
                 final revenue = _weekRevenue[index];
                 final isSelected = _isSameDay(revenue.date, _selectedDate);
                 final isToday = _isToday(revenue.date);
+                final maxRevenue = _weekRevenue.map((e) => e.revenue).reduce((a, b) => a > b ? a : b);
+                double barHeight = maxRevenue > 0 ? (revenue.revenue / maxRevenue) * 40 : 0;
                 
                 return GestureDetector(
                   onTap: () {
@@ -348,50 +567,50 @@ class _DailyReceiptsScreenState extends State<DailyReceiptsScreen> {
                     _loadDailyData();
                   },
                   child: Container(
-                    width: 80,
+                    width: 45,
                     margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isSelected 
-                          ? const Color(0xFF4F46E5)
-                          : isToday 
-                              ? const Color(0xFF10B981).withOpacity(0.1)
-                              : const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSelected 
-                            ? const Color(0xFF4F46E5)
-                            : isToday
-                                ? const Color(0xFF10B981)
-                                : const Color(0xFFE2E8F0),
-                      ),
-                    ),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        // Bar chart
+                        Expanded(
+                          child: Container(
+                            alignment: Alignment.bottomCenter,
+                            child: Container(
+                              width: 20,
+                              height: barHeight,
+                              decoration: BoxDecoration(
+                                color: isSelected 
+                                    ? const Color(0xFF4F46E5)
+                                    : isToday 
+                                        ? const Color(0xFF10B981)
+                                        : const Color(0xFFE2E8F0),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Day label
                         Text(
                           _getWeekdayShort(revenue.date),
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.w500,
                             color: isSelected 
-                                ? Colors.white
+                                ? const Color(0xFF4F46E5)
                                 : isToday
                                     ? const Color(0xFF10B981)
                                     : const Color(0xFF64748B),
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        // Amount
                         Text(
                           '${revenue.revenue.toInt()}',
                           style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
                             color: isSelected 
-                                ? Colors.white
-                                : isToday
-                                    ? const Color(0xFF10B981)
-                                    : const Color(0xFF1E293B),
+                                ? const Color(0xFF4F46E5)
+                                : const Color(0xFF94A3B8),
                           ),
                         ),
                       ],
@@ -406,200 +625,18 @@ class _DailyReceiptsScreenState extends State<DailyReceiptsScreen> {
     );
   }
 
-  Widget _buildRevenueBreakdown() {
-    if (_dailyStats == null) {
-      return const Center(
-        child: Text(
-          'Aucune donnée disponible pour cette date',
-          style: TextStyle(
-            fontSize: 14,
-            color: Color(0xFF64748B),
-          ),
-        ),
-      );
-    }
-
-    final stats = _dailyStats!;
-    
-    return Container(
-      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-      child: Column(
-        children: [
-          // Summary card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Résumé financier',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildSummaryItem(
-                      'Recette totale',
-                      '${stats.revenue.toInt()} DH',
-                      const Color(0xFF10B981),
-                    ),
-                    _buildSummaryItem(
-                      'Paiement moyen',
-                      '${stats.averagePayment.toInt()} DH',
-                      const Color(0xFF4F46E5),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (stats.payments > 0)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.info_outline,
-                          size: 16,
-                          color: Color(0xFF64748B),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '${stats.payments} paiement${stats.payments > 1 ? 's' : ''} effectué${stats.payments > 1 ? 's' : ''} ce jour',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Quick actions
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Actions rapides',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildQuickActionButton(
-                        'Nouveau paiement',
-                        Icons.add_circle_outline,
-                        const Color(0xFF4F46E5),
-                        () => Navigator.pushNamed(context, '/patient-selection'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildQuickActionButton(
-                        'Voir patients',
-                        Icons.people_outline,
-                        const Color(0xFF8B5CF6),
-                        () => Navigator.pushNamed(context, '/patient-selection'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  String _getPerformanceInsight(DailyStatsDto stats) {
+    if (stats.totalRevenue >= 5000) return 'Excellente journée';
+    if (stats.totalRevenue >= 3000) return 'Bonne performance';
+    if (stats.totalRevenue >= 1000) return 'Journée correcte';
+    return 'Activité faible';
   }
 
-  Widget _buildSummaryItem(String label, String value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF64748B),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActionButton(
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.2)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  Color _getPerformanceColor(DailyStatsDto stats) {
+    if (stats.totalRevenue >= 5000) return const Color(0xFF10B981);
+    if (stats.totalRevenue >= 3000) return const Color(0xFF059669);
+    if (stats.totalRevenue >= 1000) return const Color(0xFFF59E0B);
+    return const Color(0xFFEF4444);
   }
 
   bool _isToday(DateTime date) {
