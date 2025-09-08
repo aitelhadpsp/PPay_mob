@@ -543,7 +543,7 @@ class _PatientSelectionScreenState extends State<PatientSelectionScreen> {
   }
 
   void _navigateToCreateUser() async {
-    final result = await Navigator.pushNamed(context, '/create-user');
+    final result = await Navigator.pushNamed(context, '/create-patient');
 
     if (result != null && result is PatientDto) {
    

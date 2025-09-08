@@ -2,6 +2,7 @@ import 'package:denta_incomes/screens/auth/change_password_screen.dart';
 import 'package:denta_incomes/screens/auth/checkAuth.dart';
 import 'package:denta_incomes/screens/auth/forgot_password_screen.dart';
 import 'package:denta_incomes/screens/auth/login_screen.dart';
+import 'package:denta_incomes/screens/patient/update_user_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -60,6 +61,40 @@ class MedicalPaymentApp extends StatelessWidget {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             elevation: 0,
+            backgroundColor: const Color(0xFF4F46E5), // Primary color background
+            foregroundColor: Colors.white, // White text color
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.white, // Explicitly set white text
+            ),
+          ),
+        ),
+
+        // Text Button Theme
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFF4F46E5),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+
+        // Outlined Button Theme
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF4F46E5),
+            side: const BorderSide(color: Color(0xFF4F46E5)),
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
@@ -69,6 +104,14 @@ class MedicalPaymentApp extends StatelessWidget {
               fontWeight: FontWeight.w500,
             ),
           ),
+        ),
+
+        // Floating Action Button Theme
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Color(0xFF4F46E5),
+          foregroundColor: Colors.white,
+          iconSize: 24,
+          elevation: 8,
         ),
 
         // Input Decoration Theme
@@ -140,10 +183,13 @@ class MedicalPaymentApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF4F46E5),
           primary: const Color(0xFF4F46E5),
+          onPrimary: Colors.white, // Ensures white text on primary color buttons
           secondary: const Color(0xFF10B981),
+          onSecondary: Colors.white, // Ensures white text on secondary color buttons
           surface: Colors.white,
           background: const Color(0xFFF1F5F9),
           error: const Color(0xFFEF4444),
+          onError: Colors.white, // Ensures white text on error buttons
         ),
       ),
 
@@ -158,7 +204,8 @@ class MedicalPaymentApp extends StatelessWidget {
         '/payment-success': (context) => const PaymentSuccessScreen(),
         '/new-payment': (context) => const NewPaymentScreen(),
         '/daily-receipts': (context) => const DailyReceiptsScreen(),
-        '/create-user': (context) => const CreateUserScreen(),
+        '/create-patient': (context) => const CreateUserScreen(),
+        '/edit-patient': (context) => const EditPatientScreen(),
         '/patient-details': (context) => const PatientDetailsScreen(),
         '/treatment-management': (context) => const TreatmentManagementScreen(),
         '/treatment-assignment': (context) => const TreatmentAssignmentScreen(),

@@ -1,3 +1,4 @@
+import 'package:denta_incomes/screens/treatment/update_treatment_screen.dart';
 import 'package:flutter/material.dart';
 import '../../models/treatment_dto.dart';
 import '../../services/treatment_service.dart';
@@ -415,9 +416,12 @@ class _TreatmentManagementScreenState extends State<TreatmentManagementScreen> {
     switch (action) {
       case 'edit':
         // Navigate to edit screen (you can implement this)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Fonction de modification bientôt disponible')),
-        );
+Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (context) => UpdateTreatmentScreen(treatment: treatment),
+  ),
+);
         break;
       
       case 'deactivate':

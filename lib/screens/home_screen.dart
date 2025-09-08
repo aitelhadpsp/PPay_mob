@@ -707,7 +707,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         'gradient': const LinearGradient(
           colors: [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
         ),
-        'route': '/create-user',
+        'route': '/create-patient',
       },
       {
         'title': 'Gérer\nTraitements',

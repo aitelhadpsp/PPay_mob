@@ -3,10 +3,9 @@ import 'package:denta_incomes/models/patient_dto.dart';
 import 'package:denta_incomes/models/payment_dto.dart';
 import 'package:denta_incomes/models/treatment_dto.dart';
 import 'package:denta_incomes/services/patient_service.dart';
-import 'package:denta_incomes/services/payment_service.dart';
 
 class PatientDetailsScreen extends StatefulWidget {
-  const PatientDetailsScreen({Key? key}) : super(key: key);
+  const PatientDetailsScreen({super.key});
 
   @override
   State<PatientDetailsScreen> createState() => _PatientDetailsScreenState();
@@ -17,6 +16,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
   late TabController _tabController;
   PatientWithTreatmentsDto? patient;
   bool isLoading = true;
+  bool isDeletingPatient = false;
   String? errorMessage;
 
   @override
@@ -60,12 +60,212 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     }
   }
 
+  Future<void> _deletePatient() async {
+    if (patient == null) return;
+
+    // Show confirmation dialog
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.warning_rounded,
+                color: Color(0xFFEF4444),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Supprimer le patient',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Êtes-vous sûr de vouloir supprimer le patient "${patient!.name}" ?',
+              style: const TextStyle(
+                fontSize: 16,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Color(0xFFEF4444),
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Cette action est irréversible. Tous les traitements et paiements associés seront également supprimés.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFFEF4444),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+        actionsPadding: const EdgeInsets.all(16),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF64748B),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Annuler',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.delete_outline, size: 18),
+                SizedBox(width: 6),
+                Text(
+                  'Supprimer',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) return;
+
+    setState(() {
+      isDeletingPatient = true;
+    });
+
+    try {
+      final response = await PatientService.deletePatient(patient!.id);
+
+      if (response.success) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Patient "${patient!.name}" supprimé avec succès'),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+
+        // Navigate to home screen
+        Navigator.pushNamedAndRemoveUntil(
+          // ignore: use_build_context_synchronously
+          context,
+          '/patient-selection',
+          (route) => false,
+        );
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    response.message ?? 'Erreur lors de la suppression du patient',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Erreur inattendue: ${e.toString()}'),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } finally {
+      setState(() {
+        isDeletingPatient = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (errorMessage != null || patient == null) {
@@ -86,11 +286,61 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
+          // Edit button
           IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () {
-              // Navigate to edit patient
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4F46E5).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.edit_rounded,
+                color: Color(0xFF4F46E5),
+                size: 20,
+              ),
+            ),
+            onPressed: () async {
+              final updatedPatient =
+                  await Navigator.pushNamed(
+                        context,
+                        '/edit-patient',
+                        arguments: patient!,
+                      )
+                      as PatientDto?;
+
+              // If patient was updated, refresh the current screen
+              if (updatedPatient != null) {
+                _fetchPatient(int.parse(updatedPatient.reference));
+              }
             },
+            tooltip: 'Modifier le patient',
+          ),
+          // Delete button
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: isDeletingPatient
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEF4444)),
+                      ),
+                    )
+                  : const Icon(
+                      Icons.delete_rounded,
+                      color: Color(0xFFEF4444),
+                      size: 20,
+                    ),
+            ),
+            onPressed: isDeletingPatient ? null : _deletePatient,
+            tooltip: 'Supprimer le patient',
           ),
         ],
         bottom: TabBar(
@@ -107,11 +357,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildInfoTab(),
-          _buildTreatmentsTab(),
-          _buildPaymentsTab(),
-        ],
+        children: [_buildInfoTab(), _buildTreatmentsTab(), _buildPaymentsTab()],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -172,7 +418,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF4F46E5).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
@@ -189,12 +438,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               ],
             ),
           ),
-          
+
           const SizedBox(height: 20),
 
           // Financial Overview
           _buildFinancialOverview(),
-          
+
           const SizedBox(height: 20),
 
           // Contact Information
@@ -293,7 +542,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
     );
   }
 
-  Widget _buildFinancialCard(String title, String amount, Color color, IconData icon) {
+  Widget _buildFinancialCard(
+    String title,
+    String amount,
+    Color color,
+    IconData icon,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -362,7 +616,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             _buildInfoRow(Icons.email, 'Email', patient!.email!),
           if (patient!.address != null)
             _buildInfoRow(Icons.location_on, 'Adresse', patient!.address!),
-          if (patient!.phone == null && patient!.email == null && patient!.address == null)
+          if (patient!.phone == null &&
+              patient!.email == null &&
+              patient!.address == null)
             const Text(
               'Aucune information de contact disponible',
               style: TextStyle(
@@ -404,10 +660,23 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           if (patient!.gender != null)
             _buildInfoRow(Icons.person_outline, 'Genre', patient!.gender!),
           if (patient!.birthDate != null)
-            _buildInfoRow(Icons.cake, 'Date de naissance', _formatDate(patient!.birthDate!)),
-          _buildInfoRow(Icons.access_time, 'Patient depuis', _formatDate(patient!.createdDate)),
-          if (patient!.medicalNotes != null && patient!.medicalNotes!.isNotEmpty)
-            _buildInfoRow(Icons.medical_information, 'Notes médicales', patient!.medicalNotes!),
+            _buildInfoRow(
+              Icons.cake,
+              'Date de naissance',
+              _formatDate(patient!.birthDate!),
+            ),
+          _buildInfoRow(
+            Icons.access_time,
+            'Patient depuis',
+            _formatDate(patient!.createdDate),
+          ),
+          if (patient!.medicalNotes != null &&
+              patient!.medicalNotes!.isNotEmpty)
+            _buildInfoRow(
+              Icons.medical_information,
+              'Notes médicales',
+              patient!.medicalNotes!,
+            ),
         ],
       ),
     );
@@ -483,10 +752,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           ),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF64748B),
-            ),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
           ),
         ],
       ),
@@ -511,9 +777,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                color: Color(0xFF1E293B),
-              ),
+              style: const TextStyle(color: Color(0xFF1E293B)),
             ),
           ),
         ],
@@ -544,9 +808,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             const SizedBox(height: 8),
             Text(
               'Ce patient n\'a pas encore de traitement assigné',
-              style: TextStyle(
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(color: Colors.grey[500]),
             ),
           ],
         ),
@@ -564,9 +826,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
   }
 
   Widget _buildTreatmentCard(PatientTreatmentDto treatment) {
-    final progress = treatment.totalPrice > 0 
-        ? (treatment.totalPaidAmount / treatment.totalPrice)
-        : 0.0;
+    final progress =
+        treatment.totalPrice > 0
+            ? (treatment.totalPaidAmount / treatment.totalPrice)
+            : 0.0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -614,10 +877,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           const SizedBox(height: 8),
           Text(
             treatment.treatmentDescription,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
           ),
           const SizedBox(height: 12),
           Row(
@@ -650,10 +910,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           const SizedBox(height: 8),
           Text(
             '${(progress * 100).toInt()}% complété',
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF64748B),
-            ),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
           ),
           if (treatment.installments.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -665,33 +922,38 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              children: treatment.installments.map((installment) {
-                return ListTile(
-                  dense: true,
-                  leading: Icon(
-                    installment.isPaid ? Icons.check_circle : Icons.pending,
-                    color: installment.isPaid ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
-                    size: 20,
-                  ),
-                  title: Text(
-                    installment.description,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  subtitle: Text(
-                    '${installment.amount.toInt()} DH${installment.isObligatory ? ' (Obligatoire)' : ''}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  trailing: installment.isPaid
-                      ? Text(
-                          _formatDate(installment.paidDate!),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                          ),
-                        )
-                      : null,
-                );
-              }).toList(),
+              children:
+                  treatment.installments.map((installment) {
+                    return ListTile(
+                      dense: true,
+                      leading: Icon(
+                        installment.isPaid ? Icons.check_circle : Icons.pending,
+                        color:
+                            installment.isPaid
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFF59E0B),
+                        size: 20,
+                      ),
+                      title: Text(
+                        installment.description,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        '${installment.amount.toInt()} DH${installment.isObligatory ? ' (Obligatoire)' : ''}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing:
+                          installment.isPaid
+                              ? Text(
+                                _formatDate(installment.paidDate!),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                              )
+                              : null,
+                    );
+                  }).toList(),
             ),
           ],
         ],
@@ -705,11 +967,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.payment_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.payment_outlined, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               'Aucun paiement',
@@ -722,9 +980,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             const SizedBox(height: 8),
             Text(
               'Ce patient n\'a pas encore effectué de paiement',
-              style: TextStyle(
-                color: Colors.grey[500],
-              ),
+              style: TextStyle(color: Colors.grey[500]),
             ),
           ],
         ),
@@ -767,7 +1023,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getPaymentTypeColor(payment.paymentType).withOpacity(0.1),
+                  color: _getPaymentTypeColor(
+                    payment.paymentType,
+                  ).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -784,36 +1042,22 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(
-                Icons.access_time,
-                size: 16,
-                color: Colors.grey[600],
-              ),
+              Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
               const SizedBox(width: 4),
               Text(
                 _formatDateTime(payment.paymentDate),
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.grey[600], fontSize: 14),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Row(
             children: [
-              Icon(
-                Icons.payment,
-                size: 16,
-                color: Colors.grey[600],
-              ),
+              Icon(Icons.payment, size: 16, color: Colors.grey[600]),
               const SizedBox(width: 4),
               Text(
                 payment.paymentMethod,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.grey[600], fontSize: 14),
               ),
             ],
           ),
@@ -832,10 +1076,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen>
             const SizedBox(height: 4),
             Text(
               'Réf: ${payment.transactionReference}',
-              style: const TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
             ),
           ],
         ],
