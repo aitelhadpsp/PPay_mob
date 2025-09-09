@@ -3,6 +3,7 @@ import 'package:denta_incomes/models/patient_dto.dart';
 import 'package:denta_incomes/models/treatment_dto.dart';
 import 'package:denta_incomes/models/payment_dto.dart';
 import 'package:denta_incomes/services/payment_service.dart';
+import 'package:denta_incomes/services/pdf_service.dart'; // Add this import
 import 'package:denta_incomes/widgets/signature_box.dart';
 import 'package:flutter/material.dart';
 
@@ -38,7 +39,7 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
     isCustomPayment = paymentData['isCustomPayment'] ?? false;
   }
 
-  void _onSignatureSaved( String base64) {
+  void _onSignatureSaved(String base64) {
     setState(() {
       signatureBase64 = base64;
       hasSignature = true;
@@ -448,7 +449,7 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
     final response = await PaymentService.payInstallment(installment!.id, paymentDto);
     
     if (response.success && response.data != null) {
-      _showSuccessAndNavigate(response.data!);
+      await _showSuccessAndNavigate(response.data!);
     } else {
       _showErrorMessage(response.message ?? 'Erreur lors du traitement du paiement');
     }
@@ -486,14 +487,197 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
     final response = await PaymentService.payCustomAmount(paymentDto);
     
     if (response.success && response.data != null) {
-      _showSuccessAndNavigate(response.data!);
+      await _showSuccessAndNavigate(response.data!);
     } else {
       _showErrorMessage(response.message ?? 'Erreur lors du traitement du paiement');
     }
   }
 
-  void _showSuccessAndNavigate(PaymentRecordDto paymentRecord) {
-    // Show success message
+  Future<void> _showSuccessAndNavigate(PaymentRecordDto paymentRecord) async {
+    try {
+      // Generate PDF receipt
+      final pdfPath = await PDFService.generatePaymentReceipt(
+        patient: patient!,
+        treatment: treatment!,
+        paymentRecord: paymentRecord,
+        paymentAmount: paymentAmount,
+        signatureBase64: signatureBase64,
+        isCustomPayment: isCustomPayment,
+        installment: installment,
+      );
+
+      // Show success dialog with PDF options
+      if (mounted) {
+        await _showSuccessDialog(paymentRecord, pdfPath);
+      }
+    } catch (pdfError) {
+      // If PDF generation fails, still show success but without PDF
+      if (mounted) {
+        _showSuccessMessage(paymentRecord);
+        _navigateToPatientDetails();
+      }
+    }
+  }
+
+  Future<void> _showSuccessDialog(PaymentRecordDto paymentRecord, String pdfPath) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Success Icon
+              Container(
+                width: 80,
+                height: 80,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF10B981),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check,
+                  color: Colors.white,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Success Message
+              const Text(
+                'Paiement Confirmé!',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1E293B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+
+              Text(
+                'Paiement de ${paymentAmount.toInt()} DH enregistré avec succès',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+
+              Text(
+                'Référence: ${paymentRecord.id}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                  fontStyle: FontStyle.italic,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+
+              // PDF Info
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4F46E5).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.picture_as_pdf,
+                      color: Color(0xFF4F46E5),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Reçu PDF généré',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF4F46E5),
+                            ),
+                          ),
+                          Text(
+                            pdfPath.split('/').last,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Color(0xFF64748B),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      await PDFService.sharePDF(pdfPath);
+                    },
+                    icon: const Icon(Icons.share, size: 18),
+                    label: const Text('Partager'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      await PDFService.printPDF(pdfPath);
+                    },
+                    icon: const Icon(Icons.print, size: 18),
+                    label: const Text('Imprimer'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _navigateToPatientDetails();
+                    },
+                    icon: const Icon(Icons.check, size: 18),
+                    label: const Text('Terminé'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F46E5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSuccessMessage(PaymentRecordDto paymentRecord) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -512,8 +696,9 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
         duration: const Duration(seconds: 4),
       ),
     );
+  }
 
-    // Navigate back to patient details
+  void _navigateToPatientDetails() {
     Navigator.pushNamedAndRemoveUntil(
       context,
       '/patient-details',
