@@ -201,10 +201,6 @@ class PDFService {
             ),
             pw.SizedBox(height: 5),
             pw.Text(
-              'Dr. [Nom du Docteur]',
-              style: pw.TextStyle(font: font, fontSize: 14, color: PdfColors.grey700),
-            ),
-            pw.Text(
               'Adresse du cabinet',
               style: pw.TextStyle(font: font, fontSize: 12, color: PdfColors.grey600),
             ),

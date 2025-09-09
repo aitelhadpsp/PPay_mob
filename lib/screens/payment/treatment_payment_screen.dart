@@ -512,10 +512,6 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
       }
     } catch (pdfError) {
 
-print("==========================");
-print(pdfError);
-print("==========================");
-      
       // If PDF generation fails, still show success but without PDF
       if (mounted) {
         _showSuccessMessage(paymentRecord);
