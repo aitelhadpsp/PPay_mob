@@ -21,137 +21,167 @@ class PDFService {
     required bool isCustomPayment,
     PatientInstallmentDto? installment,
   }) async {
-    final pdf = pw.Document();
-    final now = DateTime.now();
+    try {
+      final pdf = pw.Document();
+      final now = DateTime.now();
 
-    // Load font
-    final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
-    final font = pw.Font.ttf(fontData);
-    final fontBold = pw.Font.ttf(await rootBundle.load('assets/fonts/Roboto-Bold.ttf'));
-
-    // Decode signature if available
-    pw.MemoryImage? signatureImage;
-    if (signatureBase64 != null && signatureBase64.isNotEmpty) {
+      // Load fonts - using system fonts as fallback
+      late pw.Font font;
+      late pw.Font fontBold;
+      
       try {
-        final signatureBytes = base64Decode(signatureBase64);
-        signatureImage = pw.MemoryImage(signatureBytes);
+        final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+        final fontBoldData = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
+        font = pw.Font.ttf(fontData);
+        fontBold = pw.Font.ttf(fontBoldData);
       } catch (e) {
-        // If signature decoding fails, continue without signature
+        // Use system fonts if custom fonts are not available
+        font = await PdfGoogleFonts.notoSansRegular();
+        fontBold = await PdfGoogleFonts.notoSansBold();
       }
-    }
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // Header
-              _buildHeader(font, fontBold),
-              pw.SizedBox(height: 30),
+      // Decode signature if available
+      pw.MemoryImage? signatureImage;
+      if (signatureBase64 != null && signatureBase64.isNotEmpty) {
+        try {
+          final signatureBytes = base64Decode(signatureBase64);
+          signatureImage = pw.MemoryImage(signatureBytes);
+        } catch (e) {
+          print('Error decoding signature: $e');
+          // Continue without signature
+        }
+      }
 
-              // Receipt Title
-              pw.Center(
-                child: pw.Container(
-                  padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.blue50,
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
-                  child: pw.Text(
-                    'REÇU DE PAIEMENT',
-                    style: pw.TextStyle(
-                      font: fontBold,
-                      fontSize: 18,
-                      color: PdfColors.blue800,
-                      letterSpacing: 1.5,
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (pw.Context context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // Header
+                _buildHeader(font, fontBold),
+                pw.SizedBox(height: 30),
+
+                // Receipt Title
+                pw.Center(
+                  child: pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.blue50,
+                      borderRadius: pw.BorderRadius.circular(8),
+                    ),
+                    child: pw.Text(
+                      'REÇU DE PAIEMENT',
+                      style: pw.TextStyle(
+                        font: fontBold,
+                        fontSize: 18,
+                        color: PdfColors.blue800,
+                        letterSpacing: 1.5,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              pw.SizedBox(height: 20),
+                pw.SizedBox(height: 20),
 
-              // Payment Amount (Highlighted)
-              pw.Center(
-                child: pw.Container(
-                  padding: const pw.EdgeInsets.all(20),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.green50,
-                    border: pw.Border.all(color: PdfColors.green300, width: 2),
-                    borderRadius: pw.BorderRadius.circular(12),
-                  ),
-                  child: pw.Text(
-                    '${paymentAmount.toInt()} DH',
-                    style: pw.TextStyle(
-                      font: fontBold,
-                      fontSize: 32,
-                      color: PdfColors.green800,
+                // Payment Amount (Highlighted)
+                pw.Center(
+                  child: pw.Container(
+                    padding: const pw.EdgeInsets.all(20),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.green50,
+                      border: pw.Border.all(color: PdfColors.green300, width: 2),
+                      borderRadius: pw.BorderRadius.circular(12),
+                    ),
+                    child: pw.Text(
+                      '${paymentAmount.toInt()} DH',
+                      style: pw.TextStyle(
+                        font: fontBold,
+                        fontSize: 32,
+                        color: PdfColors.green800,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              pw.SizedBox(height: 30),
+                pw.SizedBox(height: 30),
 
-              // Payment Details Section
-              _buildSectionHeader('DÉTAILS DU PAIEMENT', fontBold),
-              pw.SizedBox(height: 15),
-              _buildDetailsTable(
-                patient: patient,
-                treatment: treatment,
-                paymentRecord: paymentRecord,
-                paymentAmount: paymentAmount,
-                isCustomPayment: isCustomPayment,
-                installment: installment,
-                now: now,
-                font: font,
-                fontBold: fontBold,
-              ),
-              pw.SizedBox(height: 25),
-
-              // Treatment Progress Section
-              _buildSectionHeader('PROGRESSION DU TRAITEMENT', fontBold),
-              pw.SizedBox(height: 15),
-              _buildTreatmentProgress(treatment, paymentAmount, font, fontBold),
-              pw.SizedBox(height: 25),
-
-              // Signature Section
-              if (signatureImage != null) ...[
-                _buildSectionHeader('SIGNATURE DU PATIENT', fontBold),
+                // Payment Details Section
+                _buildSectionHeader('DÉTAILS DU PAIEMENT', fontBold),
                 pw.SizedBox(height: 15),
-                pw.Container(
-                  height: 80,
-                  width: double.infinity,
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: PdfColors.grey300),
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
-                  child: pw.Padding(
-                    padding: const pw.EdgeInsets.all(8),
-                    child: pw.Image(signatureImage),
-                  ),
+                _buildDetailsTable(
+                  patient: patient,
+                  treatment: treatment,
+                  paymentRecord: paymentRecord,
+                  paymentAmount: paymentAmount,
+                  isCustomPayment: isCustomPayment,
+                  installment: installment,
+                  now: now,
+                  font: font,
+                  fontBold: fontBold,
                 ),
                 pw.SizedBox(height: 25),
+
+                // Treatment Progress Section
+                _buildSectionHeader('PROGRESSION DU TRAITEMENT', fontBold),
+                pw.SizedBox(height: 15),
+                _buildTreatmentProgress(treatment, paymentAmount, font, fontBold),
+                pw.SizedBox(height: 25),
+
+                // Signature Section
+                if (signatureImage != null) ...[
+                  _buildSectionHeader('SIGNATURE DU PATIENT', fontBold),
+                  pw.SizedBox(height: 15),
+                  pw.Container(
+                    height: 80,
+                    width: double.infinity,
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey300),
+                      borderRadius: pw.BorderRadius.circular(8),
+                    ),
+                    child: pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Image(signatureImage),
+                    ),
+                  ),
+                  pw.SizedBox(height: 25),
+                ],
+
+                pw.Spacer(),
+
+                // Footer
+                _buildFooter(paymentRecord, now, font, fontBold),
               ],
+            );
+          },
+        ),
+      );
 
-              pw.Spacer(),
+      // Get directory with better error handling
+      Directory? directory;
+      try {
+        directory = await getApplicationDocumentsDirectory();
+      } catch (e) {
+        // Fallback to temporary directory if documents directory is not available
+        directory = await getTemporaryDirectory();
+      }
 
-              // Footer
-              _buildFooter(paymentRecord, now, font, fontBold),
-            ],
-          );
-        },
-      ),
-    );
+      // Create receipts subdirectory
+      final receiptsDir = Directory('${directory.path}/receipts');
+      if (!await receiptsDir.exists()) {
+        await receiptsDir.create(recursive: true);
+      }
 
-    // Save PDF
-    final output = await getApplicationDocumentsDirectory();
-    final fileName = 'recu_paiement_${paymentRecord.id}_${now.millisecondsSinceEpoch}.pdf';
-    final file = File('${output.path}/$fileName');
-    await file.writeAsBytes(await pdf.save());
+      // Save PDF with timestamp
+      final fileName = 'recu_paiement_${paymentRecord.id}_${now.millisecondsSinceEpoch}.pdf';
+      final file = File('${receiptsDir.path}/$fileName');
+      await file.writeAsBytes(await pdf.save());
 
-    return file.path;
+      return file.path;
+    } catch (e) {
+      print('Error generating PDF: $e');
+      throw Exception('Erreur lors de la génération du PDF: $e');
+    }
   }
 
   static pw.Widget _buildHeader(pw.Font font, pw.Font fontBold) {
@@ -252,6 +282,7 @@ class PDFService {
             valueColor: PdfColors.green700),
         _buildTableRow('Méthode', paymentRecord.paymentMethod, font, fontBold),
         _buildTableRow('Date de paiement', _formatDateTime(paymentRecord.paymentDate), font, fontBold),
+        _buildTableRow('Référence paiement', paymentRecord.id.toString(), font, fontBold),
         if (paymentRecord.notes?.isNotEmpty == true)
           _buildTableRow('Notes', paymentRecord.notes!, font, fontBold),
       ],
@@ -363,7 +394,7 @@ class PDFService {
               children: [
                 // Background
                 pw.Container(color: PdfColors.grey100),
-    
+                
                 // Center text
                 pw.Center(
                   child: pw.Text(
@@ -499,7 +530,13 @@ class PDFService {
 
   // Method to get saved PDFs directory
   static Future<String> getPDFsDirectory() async {
-    final directory = await getApplicationDocumentsDirectory();
+    Directory? directory;
+    try {
+      directory = await getApplicationDocumentsDirectory();
+    } catch (e) {
+      directory = await getTemporaryDirectory();
+    }
+    
     final pdfDir = Directory('${directory.path}/receipts');
     if (!await pdfDir.exists()) {
       await pdfDir.create(recursive: true);

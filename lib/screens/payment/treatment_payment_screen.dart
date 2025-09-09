@@ -511,6 +511,11 @@ class _TreatmentPaymentScreenState extends State<TreatmentPaymentScreen> {
         await _showSuccessDialog(paymentRecord, pdfPath);
       }
     } catch (pdfError) {
+
+print("==========================");
+print(pdfError);
+print("==========================");
+      
       // If PDF generation fails, still show success but without PDF
       if (mounted) {
         _showSuccessMessage(paymentRecord);
